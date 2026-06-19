@@ -4,6 +4,7 @@ import { useAtrium, TIMING } from './store/useAtrium';
 import { World } from './world/World';
 import { Avatar } from './avatar/Avatar';
 import { Opening } from './transitions/Opening';
+import { EnterEffect } from './transitions/EnterEffect';
 import { HudCaption } from './ui/HudCaption';
 import { PanelHost } from './ui/PanelHost';
 import { Menu } from './ui/Menu';
@@ -30,6 +31,7 @@ export default function App() {
       <div className="atrium-sky" />
       <World />
       <Avatar />
+      <EnterEffect />
       <HudCaption />
       <PanelHost />
       <Menu />

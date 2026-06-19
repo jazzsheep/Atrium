@@ -1,16 +1,21 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Mesh } from 'three';
+import { useTransition } from '../transitionContext';
+import type { PlaceId } from '../../types';
 
-// 見に行く = 青空に浮かぶ風船（作品）。
-// ★虹彩（ホログラム）はここだけに宿す（Three.js MeshPhysicalMaterial の iridescence）。
-// 呼吸するようにゆっくり膨らむ（貫通演出 Phase 2 の素地）。
-export function Balloon() {
+// 見に行く = 青空に浮かぶ風船（作品）。★虹彩はここだけ。
+// 入り演出: 呼吸するように膨らみ、近づくと膜を押し広げて貫通していく（風船＝貫通）。
+export function Balloon({ placeId }: { placeId: PlaceId }) {
   const ref = useRef<Mesh>(null!);
+  const t = useTransition();
   useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    const s = 0.6 * (1 + Math.sin(t * 1.3) * 0.04);
-    ref.current.scale.setScalar(s);
+    const tr = t.current;
+    const c = tr.active === placeId ? tr.closeness : 0;
+    const breathe = 1 + Math.sin(state.clock.elapsedTime * 1.3) * 0.04;
+    const grow = 1 + c * 1.7; // 入るほど膨らんで視界を満たす
+    ref.current.scale.setScalar(0.6 * breathe * grow);
+    (ref.current.material as { opacity: number }).opacity = 0.82 - c * 0.22; // 膜が薄れ内側へ
   });
   return (
     <mesh ref={ref}>

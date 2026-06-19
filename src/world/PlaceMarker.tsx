@@ -32,9 +32,9 @@ export function PlaceMarker({
 
   return (
     <group ref={ref} position={pos} quaternion={quat} onClick={handle}>
-      {meta.motif === 'house' && <House />}
-      {meta.motif === 'balloon' && <Balloon />}
-      {meta.motif === 'vortex' && <Vortex />}
+      {meta.motif === 'house' && <House placeId={meta.id} />}
+      {meta.motif === 'balloon' && <Balloon placeId={meta.id} />}
+      {meta.motif === 'vortex' && <Vortex placeId={meta.id} />}
     </group>
   );
 }
