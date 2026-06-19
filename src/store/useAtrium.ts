@@ -46,7 +46,7 @@ interface AtriumState {
   setMenuOpen: (open: boolean) => void;
 }
 
-// 演出のフェーズ遷移に使うタイマー（重複時はクリア）。
+// 演出のフェーズ遷移に使うタイマー（重複時はクリア＝最後の操作が勝つ）。
 let phaseTimer: ReturnType<typeof setTimeout> | null = null;
 const clearPhaseTimer = () => {
   if (phaseTimer) {
@@ -72,6 +72,13 @@ export const useAtrium = create<AtriumState>((set, get) => ({
   },
 
   enter: (focus, opts) => {
+    const s = get();
+    const section = focus.section ?? null;
+    // すでに同じ場所・同じセクションを表示中なら再演出しない（連打・無駄な再生の防止）。
+    if (s.phase === 'inside' && s.location === focus.place && s.activeSection === section) {
+      if (s.menuOpen) set({ menuOpen: false });
+      return;
+    }
     clearPhaseTimer();
     const dur = opts?.fromMenu ? TIMING.enterFromMenu : TIMING.enter;
     // 入り演出 → 中身パネル。location/section を確定し、演出後に inside へ。
@@ -79,13 +86,19 @@ export const useAtrium = create<AtriumState>((set, get) => ({
       phase: 'entering',
       location: focus.place,
       focusedPlace: focus.place,
-      activeSection: focus.section ?? null,
+      activeSection: section,
       menuOpen: false,
     });
     phaseTimer = setTimeout(() => set({ phase: 'inside' }), dur);
   },
 
   returnToHub: () => {
+    const s = get();
+    // すでにハブで休止中なら何もしない（ホーム連打などの空振り防止）。
+    if (s.phase === 'idle' && s.location === 'hub') {
+      if (s.menuOpen) set({ menuOpen: false });
+      return;
+    }
     clearPhaseTimer();
     set({ phase: 'returning', menuOpen: false });
     phaseTimer = setTimeout(

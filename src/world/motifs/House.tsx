@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { DoubleSide, MathUtils, type Mesh } from 'three';
 import { useTransition } from '../transitionContext';
+import { REDUCED_MOTION } from '../../utils/reducedMotion';
 import type { PlaceId } from '../../types';
 
 // 知る = 草原に建つ家（水彩トーン）。
@@ -15,7 +16,8 @@ export function House({ placeId }: { placeId: PlaceId }) {
   useFrame((state) => {
     const tr = t.current;
     const c = tr.active === placeId ? tr.closeness : 0;
-    const sway = Math.sin(state.clock.elapsedTime * 2.2) * 0.06 * c; // 風の揺らぎ
+    // 風の揺らぎ（装飾）は reduced-motion では止める。持ち上がり自体は入場の本質なので残す。
+    const sway = (REDUCED_MOTION ? 0 : Math.sin(state.clock.elapsedTime * 2.2) * 0.06) * c;
     const lift = MathUtils.lerp(0, Math.PI * 0.6, c);
     if (curtainL.current) curtainL.current.rotation.x = -lift - sway;
     if (curtainR.current) curtainR.current.rotation.x = -lift + sway;

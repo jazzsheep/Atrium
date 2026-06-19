@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAtrium, TIMING } from './store/useAtrium';
-import { World } from './world/World';
 import { Avatar } from './avatar/Avatar';
 import { Opening } from './transitions/Opening';
 import { EnterEffect } from './transitions/EnterEffect';
@@ -9,6 +8,10 @@ import { HudCaption } from './ui/HudCaption';
 import { PanelHost } from './ui/PanelHost';
 import { Menu } from './ui/Menu';
 import { Notice } from './ui/Notice';
+
+// World（3D）は遅延読込。オープニング表示中に裏で Three.js を読み込み、初回描画を軽くする。
+// 読込中は背後の水彩スカイ（.atrium-sky）が見えるだけで破綻しない。
+const World = lazy(() => import('./world/World').then((m) => ({ default: m.World })));
 
 export default function App() {
   const phase = useAtrium((s) => s.phase);
@@ -29,7 +32,9 @@ export default function App() {
   return (
     <div className="atrium-root">
       <div className="atrium-sky" />
-      <World />
+      <Suspense fallback={null}>
+        <World />
+      </Suspense>
       <Avatar />
       <EnterEffect />
       <HudCaption />
