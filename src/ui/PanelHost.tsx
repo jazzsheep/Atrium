@@ -18,6 +18,7 @@ export function PanelHost() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const place = phase === 'inside' && location !== 'hub' ? location : null;
 
+  // 小項目で開いたら該当セクションへスクロール＋一瞬ハイライト。
   useEffect(() => {
     if (!place) return;
     const el = bodyRef.current;
@@ -36,11 +37,25 @@ export function PanelHost() {
     });
   }, [place, activeSection]);
 
+  // Escape で閉じる（戻り処理は一本化された returnToHub）。
+  useEffect(() => {
+    if (!place) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') returnToHub();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [place, returnToHub]);
+
   return (
     <AnimatePresence>
       {place && (
         <motion.div
           className="panel-scrim"
+          // 背景（パネルの外側）クリックで閉じる。
+          onClick={(e) => {
+            if (e.target === e.currentTarget) returnToHub();
+          }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

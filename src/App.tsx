@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAtrium, TIMING } from './store/useAtrium';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import { Avatar } from './avatar/Avatar';
 import { Opening } from './transitions/Opening';
 import { EnterEffect } from './transitions/EnterEffect';
@@ -32,9 +33,12 @@ export default function App() {
   return (
     <div className="atrium-root">
       <div className="atrium-sky" />
-      <Suspense fallback={null}>
-        <World />
-      </Suspense>
+      {/* 3D が失敗しても 2D の実用経路（メニュー・パネル）で継続できるよう安全網で包む。 */}
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <World />
+        </Suspense>
+      </ErrorBoundary>
       <Avatar />
       <EnterEffect />
       <HudCaption />
