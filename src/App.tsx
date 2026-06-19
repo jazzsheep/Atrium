@@ -6,6 +6,7 @@ import { Avatar } from './avatar/Avatar';
 import { Opening } from './transitions/Opening';
 import { HudCaption } from './ui/HudCaption';
 import { PanelHost } from './ui/PanelHost';
+import { Menu } from './ui/Menu';
 import { Notice } from './ui/Notice';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
       <Avatar />
       <HudCaption />
       <PanelHost />
+      <Menu />
       <Notice />
       <AnimatePresence>{phase === 'opening' && <Opening />}</AnimatePresence>
     </div>
