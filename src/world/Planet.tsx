@@ -1,21 +1,17 @@
 import { useMemo } from 'react';
-import { CanvasTexture, SRGBColorSpace } from 'three';
-import { RADIUS } from './tetrahedron';
+import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
+import { WORLD } from './worldConfig';
 
-// 水彩タッチの草原の球。
-// 「動く水彩画」の地。手続き的に滲み・塗り残しの白を描いた CanvasTexture を貼る（アセット不要・軽量）。
-function makeWatercolorTexture(): CanvasTexture {
-  const size = 512;
+// 水彩タッチの草原（大きな球＝惑星）。手続き的テクスチャでアセット不要・軽量。
+// UVの極(つなぎ目)は左右の地平線へ逃がす（mesh を Z軸90°回転）ので、舞台の真上では破綻しない。
+function makeGrassTexture(): CanvasTexture {
+  const size = 1024;
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d')!;
 
-  // ベースの縦グラデ（上＝日光で淡く、下＝草の深い緑）
-  const g = ctx.createLinearGradient(0, 0, 0, size);
-  g.addColorStop(0, '#eef5dd');
-  g.addColorStop(0.45, '#cfe2ab');
-  g.addColorStop(1, '#9cc888');
-  ctx.fillStyle = g;
+  // 落ち着いた草色のベース（強い縦グラデは避けてタイル耐性を上げる）。
+  ctx.fillStyle = '#a9cf8f';
   ctx.fillRect(0, 0, size, size);
 
   const blob = (x: number, y: number, r: number, color: string, a: number) => {
@@ -30,26 +26,25 @@ function makeWatercolorTexture(): CanvasTexture {
     ctx.globalAlpha = 1;
   };
 
-  // 滲み（濃淡の緑）とまばらな白い塗り残し
   const rnd = mulberry32(20240619);
-  for (let i = 0; i < 26; i++) {
-    const x = rnd() * size;
-    const y = rnd() * size;
-    const r = 36 + rnd() * 90;
-    const darker = rnd() > 0.5;
-    blob(x, y, r, darker ? 'rgba(120,170,110,0.9)' : 'rgba(225,238,200,0.9)', 0.22);
+  // 濃淡の緑の滲み
+  for (let i = 0; i < 90; i++) {
+    const darker = rnd() > 0.45;
+    blob(rnd() * size, rnd() * size, 26 + rnd() * 80, darker ? 'rgba(120,168,104,0.9)' : 'rgba(210,232,180,0.9)', 0.2);
   }
-  for (let i = 0; i < 10; i++) {
-    blob(rnd() * size, rnd() * size, 30 + rnd() * 60, 'rgba(255,255,255,0.95)', 0.28); // 白い余白
+  // まばらな白い塗り残し
+  for (let i = 0; i < 26; i++) {
+    blob(rnd() * size, rnd() * size, 18 + rnd() * 46, 'rgba(255,255,255,0.95)', 0.22);
   }
 
   const tex = new CanvasTexture(c);
   tex.colorSpace = SRGBColorSpace;
+  tex.wrapS = tex.wrapT = RepeatWrapping;
+  tex.repeat.set(3, 3);
   tex.anisotropy = 4;
   return tex;
 }
 
-// 決定的な疑似乱数（毎回同じ絵柄に）。
 function mulberry32(seed: number) {
   let a = seed;
   return () => {
@@ -62,11 +57,11 @@ function mulberry32(seed: number) {
 }
 
 export function Planet() {
-  const texture = useMemo(makeWatercolorTexture, []);
+  const texture = useMemo(makeGrassTexture, []);
   return (
-    <mesh>
-      <sphereGeometry args={[RADIUS, 64, 64]} />
-      {/* マットに（光沢を出さず水彩の平面感）。わずかな陰影だけ残す。 */}
+    // Z軸90°回転でUVの極を左右(地平線)へ逃がす。
+    <mesh rotation={[0, 0, Math.PI / 2]}>
+      <sphereGeometry args={[WORLD.R, 96, 96]} />
       <meshStandardMaterial map={texture} roughness={1} metalness={0} />
     </mesh>
   );

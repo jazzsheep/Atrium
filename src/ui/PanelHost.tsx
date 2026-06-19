@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAtrium } from '../store/useAtrium';
-import { PLACE_META } from '../world/tetrahedron';
+import { PLACE_BY_ID } from '../world/worldConfig';
 import { content } from '../data/content';
 import { KnowPanel } from './panels/KnowPanel';
 import { VisitPanel } from './panels/VisitPanel';
@@ -73,7 +73,7 @@ export function PanelHost() {
                 <p className="panel-kicker">
                   {content.artist.name}・{content.artist.role}
                 </p>
-                <h2 className="panel-title">{PLACE_META[place].label}</h2>
+                <h2 className="panel-title">{PLACE_BY_ID[place].label}</h2>
               </div>
               <button
                 className="panel-close"

@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAtrium, TIMING } from './store/useAtrium';
 import { ErrorBoundary } from './ui/ErrorBoundary';
-import { Avatar } from './avatar/Avatar';
 import { Opening } from './transitions/Opening';
 import { EnterEffect } from './transitions/EnterEffect';
 import { HudCaption } from './ui/HudCaption';
@@ -39,7 +38,6 @@ export default function App() {
           <World />
         </Suspense>
       </ErrorBoundary>
-      <Avatar />
       <EnterEffect />
       <HudCaption />
       <PanelHost />

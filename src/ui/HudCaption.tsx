@@ -1,14 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAtrium } from '../store/useAtrium';
-import { PLACE_META } from '../world/tetrahedron';
+import { PLACE_BY_ID } from '../world/worldConfig';
 
-// 中央のアバター下に出る案内。寄せた場所の名前と「タップして入る」を示す（サクサクな入場の手掛かり）。
+// 中央のアバター下に出る案内。最寄りの場所名と操作の手掛かりを示す。
 export function HudCaption() {
   const phase = useAtrium((s) => s.phase);
   const focusedPlace = useAtrium((s) => s.focusedPlace);
   const show = phase === 'idle';
-  const label = focusedPlace ? PLACE_META[focusedPlace].label : null;
-  const hint = focusedPlace ? 'タップして入る' : '近くの場所をタップ';
+  const label = focusedPlace ? PLACE_BY_ID[focusedPlace].label : null;
+  const hint = focusedPlace ? 'タップして入る' : 'ドラッグで町をめぐる';
 
   return (
     <AnimatePresence mode="wait">
