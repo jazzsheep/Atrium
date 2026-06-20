@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Group, MathUtils, PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import { useAtrium } from '../store/useAtrium';
-import { WORLD, PLACES, PLACE_BY_ID, surfaceDir, NORTH } from './worldConfig';
+import { WORLD, PLACES, PLACE_BY_ID, surfaceDir, NORTH, NPR } from './worldConfig';
 import { Planet } from './Planet';
+import { Sky } from './Sky';
 import { Town } from './Town';
 import { PlaceMarker } from './PlaceMarker';
 import { WindAvatar } from './WindAvatar';
+import { Watercolor } from './WatercolorEffect';
 import { Joystick } from '../ui/Joystick';
+import { EffectComposer } from '@react-three/postprocessing';
 import { TransitionContext, useTransition, type TransitionState } from './transitionContext';
 import type { PlaceId } from '../types';
 
@@ -241,9 +244,16 @@ export function World() {
         camera={{ position: [0, WORLD.R + 7, 10], fov: WORLD.fov, near: 0.1, far: WORLD.R * 4 }}
       >
         <TransitionContext.Provider value={transition}>
-          <ambientLight intensity={0.95} />
-          <directionalLight position={[6, 12, 6]} intensity={1.05} color="#fff6df" />
+          {/* 水彩＝平坦な陰影にしたいので環境光多め・指向性は弱め */}
+          <ambientLight intensity={1.1} />
+          <directionalLight position={[6, 12, 6]} intensity={0.5} color="#fff6df" />
+          <Sky />
           <Scene refs={{ control, look, didDrag }} />
+          {NPR.enabled && (
+            <EffectComposer multisampling={0}>
+              <Watercolor />
+            </EffectComposer>
+          )}
         </TransitionContext.Provider>
       </Canvas>
       <Joystick control={control} />

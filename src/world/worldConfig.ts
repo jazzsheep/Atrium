@@ -21,6 +21,9 @@ export const WORLD = {
   avatar: { lift: 1.0, size: 0.65 }, // 人間より一回り小さい（直径約1.3m）
 };
 
+// 水彩NPR（ポスト処理）。enabled=false で即オフ。値は調整しやすいよう外出し。
+export const NPR = { enabled: true, paper: 0.9, posterize: 0.5, desat: 0.2 };
+
 export interface PlaceDef {
   id: PlaceId;
   label: string;
