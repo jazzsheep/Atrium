@@ -6,6 +6,7 @@ import './styles/theme.css';
 import './styles/panels.css';
 import './styles/menu.css';
 import './styles/transitions.css';
+import './styles/controls.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

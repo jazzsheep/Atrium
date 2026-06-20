@@ -1,89 +1,146 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Group, MathUtils, PerspectiveCamera, Quaternion, Vector3 } from 'three';
+import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three';
 import { useAtrium } from '../store/useAtrium';
-import { WORLD, PLACES, PLACE_BY_ID, explorationQuat } from './worldConfig';
+import { WORLD, PLACES, PLACE_BY_ID, surfaceDir, NORTH } from './worldConfig';
 import { Planet } from './Planet';
 import { Town } from './Town';
 import { PlaceMarker } from './PlaceMarker';
 import { WindAvatar } from './WindAvatar';
+import { Joystick } from '../ui/Joystick';
 import { TransitionContext, useTransition, type TransitionState } from './transitionContext';
 import type { PlaceId } from '../types';
 
-const R = WORLD.R;
-const REST_POS = new Vector3(0, R + WORLD.cam.height, WORLD.cam.back);
-const REST_LOOK = new Vector3(0, R - WORLD.cam.lookDown, -WORLD.cam.lookAhead);
-const IN_POS = new Vector3(0, R + WORLD.camIn.height, WORLD.camIn.back);
-const IN_LOOK = new Vector3(0, R, 0);
+const UP = NORTH;
 const clamp = MathUtils.clamp;
-
 function easeInOut(x: number) {
   return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 }
 
-// ドラッグ状態（World 直下と Scene で共有する mutable ref）。
-interface DragRefs {
-  target: { current: { a: number; b: number } };
-  didDrag: { current: boolean };
+interface Control {
+  current: { mx: number; my: number };
 }
 
-function Scene({ drag }: { drag: DragRefs }) {
-  const groupRef = useRef<Group>(null!);
+// 世界(球)は固定。アバターとカメラが球面上を動く（3人称・追従）。
+function Scene({ control }: { control: Control }) {
   const phase = useAtrium((s) => s.phase);
   const location = useAtrium((s) => s.location);
   const focusPlace = useAtrium((s) => s.focusPlace);
   const t = useTransition();
 
-  const ab = useRef({ a: 0, b: 0 });
+  const avatarRef = useRef<Group>(null!);
+  const pos = useRef(new Vector3(0, 1, 0)); // 球面上の現在地（単位）
+  const head = useRef(new Vector3(0, 0, -1)); // 進行方向（接ベクトル）
+  const camF = useRef(new Vector3(0, 0, -1)); // カメラ前方（接、headに遅れて追従）
   const closeness = useRef(0);
-  const prevPhase = useRef(phase);
   const nearest = useRef<PlaceId | null>(null);
-  const q = useMemo(() => new Quaternion(), []);
-  const camPos = useMemo(() => new Vector3(), []);
-  const camLook = useMemo(() => new Vector3(), []);
+
+  const placeDirs = useMemo(() => PLACES.map((p) => ({ id: p.id, dir: surfaceDir(p.a, p.b) })), []);
+  const v = useMemo(
+    () => ({
+      right: new Vector3(),
+      d: new Vector3(),
+      tmp: new Vector3(),
+      np: new Vector3(),
+      nh: new Vector3(),
+      tdir: new Vector3(),
+      camPos: new Vector3(),
+      camLook: new Vector3(),
+    }),
+    [],
+  );
 
   useFrame((state, dtRaw) => {
-    const g = groupRef.current;
-    if (!g) return;
     const dt = Math.min(dtRaw, 0.05);
+    const p = pos.current;
+    const h = head.current;
+    const cf = camF.current;
+    const ctrl = control.current;
 
-    // 入場開始時、その場所の home を目標に（中央へ寄って入る）。
-    if (phase === 'entering' && prevPhase.current !== 'entering') {
-      const p = location !== 'hub' ? PLACE_BY_ID[location] : null;
-      if (p) {
-        drag.target.current.a = p.a;
-        drag.target.current.b = p.b;
+    if (phase === 'idle') {
+      const mag = Math.min(1, Math.hypot(ctrl.mx, ctrl.my));
+      if (mag > 0.06) {
+        // カメラ基準の右方向
+        v.right.crossVectors(cf, p).normalize();
+        // 望む進行方向（接平面に投影）
+        v.d.set(0, 0, 0).addScaledVector(cf, ctrl.my).addScaledVector(v.right, ctrl.mx);
+        v.d.addScaledVector(p, -v.d.dot(p));
+        if (v.d.lengthSq() > 1e-6) {
+          v.d.normalize();
+          // head を d へ向ける（旋回）
+          const ang = Math.atan2(v.tmp.crossVectors(h, v.d).dot(p), h.dot(v.d));
+          h.applyAxisAngle(p, clamp(ang, -WORLD.move.turn * dt, WORLD.move.turn * dt)).normalize();
+        }
+        // head 方向へ前進（大円に沿って pos,head を回す）
+        const alpha = (WORLD.move.speed * mag * dt) / WORLD.R;
+        const ca = Math.cos(alpha);
+        const sa = Math.sin(alpha);
+        v.np.copy(p).multiplyScalar(ca).addScaledVector(h, sa).normalize();
+        v.nh.copy(h).multiplyScalar(ca).addScaledVector(p, -sa).normalize();
+        p.copy(v.np);
+        h.copy(v.nh);
+        // 町の円内にクランプ
+        const angC = Math.acos(clamp(p.dot(UP), -1, 1));
+        if (angC > WORLD.townRadius) {
+          v.tdir.copy(p).addScaledVector(UP, -p.dot(UP));
+          if (v.tdir.lengthSq() > 1e-6) {
+            v.tdir.normalize();
+            p.copy(UP)
+              .multiplyScalar(Math.cos(WORLD.townRadius))
+              .addScaledVector(v.tdir, Math.sin(WORLD.townRadius))
+              .normalize();
+            h.addScaledVector(p, -h.dot(p)).normalize();
+          }
+        }
+      }
+    } else if ((phase === 'entering' || phase === 'inside') && location !== 'hub') {
+      // 入場: その場所へ歩み寄る
+      const dir = PLACE_BY_ID[location] ? surfaceDir(PLACE_BY_ID[location].a, PLACE_BY_ID[location].b) : null;
+      if (dir) {
+        p.lerp(dir, 1 - Math.exp(-3 * dt)).normalize();
+        h.addScaledVector(p, -h.dot(p)).normalize();
       }
     }
-    prevPhase.current = phase;
 
-    // (a,b) を目標へ緩める → world group を回す。
-    const tg = drag.target.current;
-    const k = 1 - Math.exp(-WORLD.drag.ease * dt);
-    ab.current.a += (tg.a - ab.current.a) * k;
-    ab.current.b += (tg.b - ab.current.b) * k;
-    explorationQuat(ab.current.a, ab.current.b, q);
-    g.quaternion.copy(q);
+    // カメラ前方を head へ遅れて追従（接平面に保つ）
+    cf.lerp(h, 1 - Math.exp(-WORLD.move.camLag * dt));
+    cf.addScaledVector(p, -cf.dot(p));
+    if (cf.lengthSq() > 1e-6) cf.normalize();
+    else cf.copy(h);
 
-    // 入り具合 → カメラのドリーイン。
-    const target = phase === 'entering' || phase === 'inside' ? 1 : 0;
-    closeness.current += (target - closeness.current) * (1 - Math.exp(-4 * dt));
+    // 入り具合
+    const tgt = phase === 'entering' || phase === 'inside' ? 1 : 0;
+    closeness.current += (tgt - closeness.current) * (1 - Math.exp(-4 * dt));
     const c = closeness.current;
-    const cam = state.camera as PerspectiveCamera;
-    camPos.lerpVectors(REST_POS, IN_POS, easeInOut(c));
-    camLook.lerpVectors(REST_LOOK, IN_LOOK, easeInOut(c));
-    cam.position.copy(camPos);
-    cam.lookAt(camLook);
 
-    // 最寄りの場所（idle のときだけ／変化時のみ store 反映）。
+    // アバター配置
+    if (avatarRef.current) {
+      avatarRef.current.position.copy(p).multiplyScalar(WORLD.R + WORLD.avatar.lift);
+      avatarRef.current.quaternion.setFromUnitVectors(UP, p);
+    }
+
+    // 追従カメラ（入場時は寄る）
+    const back = MathUtils.lerp(WORLD.cam.back, WORLD.camIn.back, easeInOut(c));
+    const height = MathUtils.lerp(WORLD.cam.height, WORLD.camIn.height, easeInOut(c));
+    v.camPos.copy(p).multiplyScalar(WORLD.R).addScaledVector(cf, -back).addScaledVector(p, height);
+    v.camLook
+      .copy(p)
+      .multiplyScalar(WORLD.R)
+      .addScaledVector(cf, WORLD.cam.lookAhead * (1 - c))
+      .addScaledVector(p, -WORLD.cam.lookDown);
+    const cam = state.camera as PerspectiveCamera;
+    cam.position.copy(v.camPos);
+    cam.lookAt(v.camLook);
+
+    // 最寄りの場所（idle時のみ／変化時だけ反映）
     if (phase === 'idle') {
       let best: PlaceId | null = null;
-      let bd = 0.2;
-      for (const p of PLACES) {
-        const d = Math.hypot(ab.current.a - p.a, ab.current.b - p.b);
-        if (d < bd) {
-          bd = d;
-          best = p.id;
+      let bd = 0.14;
+      for (const pd of placeDirs) {
+        const dd = Math.acos(clamp(p.dot(pd.dir), -1, 1));
+        if (dd < bd) {
+          bd = dd;
+          best = pd.id;
         }
       }
       if (best !== nearest.current) {
@@ -92,7 +149,7 @@ function Scene({ drag }: { drag: DragRefs }) {
       }
     }
 
-    // 共有（モチーフ／アバター／オーバーレイ用）。
+    // 共有
     t.current.closeness = c;
     t.current.active = location !== 'hub' ? location : nearest.current;
     t.current.entering = phase === 'entering';
@@ -100,20 +157,22 @@ function Scene({ drag }: { drag: DragRefs }) {
   });
 
   const handleTap = (id: PlaceId) => {
-    if (drag.didDrag.current) return; // ドラッグ後のクリックは入場にしない
     const s = useAtrium.getState();
     if (s.phase !== 'idle') return;
     s.enter({ place: id });
   };
 
   return (
-    <group ref={groupRef}>
+    <>
       <Planet />
       <Town />
-      {PLACES.map((p) => (
-        <PlaceMarker key={p.id} def={p} onTap={handleTap} />
+      {PLACES.map((pl) => (
+        <PlaceMarker key={pl.id} def={pl} onTap={handleTap} />
       ))}
-    </group>
+      <group ref={avatarRef}>
+        <WindAvatar />
+      </group>
+    </>
   );
 }
 
@@ -124,54 +183,51 @@ export function World() {
     entering: false,
     returning: false,
   });
-  const target = useRef({ a: 0, b: 0 });
-  const didDrag = useRef(false);
-  const pointer = useRef({ down: false, x: 0, y: 0, moved: 0 });
+  const control = useRef({ mx: 0, my: 0 });
 
-  const onDown = (e: React.PointerEvent) => {
-    pointer.current = { down: true, x: e.clientX, y: e.clientY, moved: 0 };
-    didDrag.current = false;
-    // setPointerCapture は使わない（canvas の R3F クリック＝タップ入場を奪わないため）。
-  };
-  const onMove = (e: React.PointerEvent) => {
-    const p = pointer.current;
-    if (!p.down) return;
-    const dx = e.clientX - p.x;
-    const dy = e.clientY - p.y;
-    p.x = e.clientX;
-    p.y = e.clientY;
-    p.moved += Math.hypot(dx, dy);
-    if (p.moved > 6) didDrag.current = true;
-    if (useAtrium.getState().phase !== 'idle') return; // 探索できるのは idle のときだけ
-    const tg = target.current;
-    tg.b = clamp(tg.b - dx * WORLD.drag.speed, -WORLD.region.b, WORLD.region.b);
-    tg.a = clamp(tg.a + dy * WORLD.drag.speed, -WORLD.region.a, WORLD.region.a);
-  };
-  const onUp = () => {
-    pointer.current.down = false;
-  };
+  // キーボード（PC: WASD / 矢印）も同じ control に書き込む。
+  useEffect(() => {
+    const keys = new Set<string>();
+    const upd = () => {
+      let mx = 0;
+      let my = 0;
+      if (keys.has('w') || keys.has('arrowup')) my += 1;
+      if (keys.has('s') || keys.has('arrowdown')) my -= 1;
+      if (keys.has('a') || keys.has('arrowleft')) mx -= 1;
+      if (keys.has('d') || keys.has('arrowright')) mx += 1;
+      control.current.mx = mx;
+      control.current.my = my;
+    };
+    const kd = (e: KeyboardEvent) => {
+      keys.add(e.key.toLowerCase());
+      upd();
+    };
+    const ku = (e: KeyboardEvent) => {
+      keys.delete(e.key.toLowerCase());
+      upd();
+    };
+    window.addEventListener('keydown', kd);
+    window.addEventListener('keyup', ku);
+    return () => {
+      window.removeEventListener('keydown', kd);
+      window.removeEventListener('keyup', ku);
+    };
+  }, []);
 
   return (
-    <div
-      className="world-layer"
-      style={{ touchAction: 'none' }}
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerLeave={onUp}
-    >
+    <div className="world-layer" style={{ touchAction: 'none' }}>
       <Canvas
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        camera={{ position: [0, R + WORLD.cam.height, WORLD.cam.back], fov: WORLD.fov, near: 0.1, far: R * 4 }}
+        camera={{ position: [0, WORLD.R + WORLD.cam.height, WORLD.cam.back], fov: WORLD.fov, near: 0.1, far: WORLD.R * 4 }}
       >
         <TransitionContext.Provider value={transition}>
           <ambientLight intensity={0.95} />
           <directionalLight position={[6, 12, 6]} intensity={1.05} color="#fff6df" />
-          <Scene drag={{ target, didDrag }} />
-          <WindAvatar />
+          <Scene control={control} />
         </TransitionContext.Provider>
       </Canvas>
+      <Joystick control={control} />
     </div>
   );
 }

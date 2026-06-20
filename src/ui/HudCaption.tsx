@@ -8,7 +8,7 @@ export function HudCaption() {
   const focusedPlace = useAtrium((s) => s.focusedPlace);
   const show = phase === 'idle';
   const label = focusedPlace ? PLACE_BY_ID[focusedPlace].label : null;
-  const hint = focusedPlace ? 'タップして入る' : 'ドラッグで町をめぐる';
+  const hint = focusedPlace ? 'タップして入る' : 'スティックで移動／場所をタップ';
 
   return (
     <AnimatePresence mode="wait">

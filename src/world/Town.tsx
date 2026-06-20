@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { surfacePose, WORLD, PLACES } from './worldConfig';
 
 // 小さな町（実寸スケール、1単位≒1m）。広場・石畳の道・建物・木・街灯を配置。
-// world group の子として一緒に流れる。3つの場所モチーフと広場の中心は避ける。
+// 歩ける円(townRadius)の中に決定的に散在。場所モチーフと中央広場は避ける。
 type Kind = 'cottage' | 'cottage2' | 'tree' | 'rock' | 'lamp';
 interface Prop {
   a: number;
@@ -27,9 +27,7 @@ function rng(seed: number) {
 function build(): Prop[] {
   const r = rng(0x5eed42);
   const out: Prop[] = [];
-  const A = WORLD.region.a * 0.95;
-  const B = WORLD.region.b * 0.95;
-  // 場所(0.1rad≒6m)と広場中心は避ける。
+  const RR = WORLD.townRadius * 0.95;
   const ok = (a: number, b: number) =>
     Math.hypot(a, b) > 0.06 && PLACES.every((p) => Math.hypot(a - p.a, b - p.b) > 0.1);
   const add = (kind: Kind, n: number, sMin: number, sMax: number) => {
@@ -37,22 +35,23 @@ function build(): Prop[] {
     let guard = 0;
     while (k < n && guard < n * 40) {
       guard++;
-      const a = (r() * 2 - 1) * A;
-      const b = (r() * 2 - 1) * B;
+      const rad = Math.sqrt(r()) * RR;
+      const ang = r() * Math.PI * 2;
+      const a = Math.cos(ang) * rad;
+      const b = Math.sin(ang) * rad;
       if (!ok(a, b)) continue;
       out.push({ a, b, kind, scale: sMin + r() * (sMax - sMin), yaw: r() * Math.PI * 2, hue: r() });
       k++;
     }
   };
-  add('tree', 16, 0.85, 1.25);
-  add('cottage', 10, 0.9, 1.2);
-  add('cottage2', 5, 0.95, 1.15);
-  add('rock', 6, 0.6, 1.0);
-  add('lamp', 8, 0.9, 1.1);
+  add('tree', 18, 0.85, 1.25);
+  add('cottage', 12, 0.9, 1.2);
+  add('cottage2', 6, 0.95, 1.15);
+  add('rock', 7, 0.6, 1.0);
+  add('lamp', 9, 0.9, 1.1);
   return out;
 }
 
-// --- 部品（メートル寸法） ---
 function Cottage({ hue, tall = false }: { hue: number; tall?: boolean }) {
   const h = tall ? 5 : 3.2;
   const wall = hue > 0.5 ? '#f3ead7' : '#eae7da';
@@ -67,7 +66,6 @@ function Cottage({ hue, tall = false }: { hue: number; tall?: boolean }) {
         <coneGeometry args={[3.2, 2.0, 4]} />
         <meshStandardMaterial color={roof} roughness={1} />
       </mesh>
-      {/* ドア */}
       <mesh position={[0, 1.0, 2.02]}>
         <planeGeometry args={[0.9, 1.6]} />
         <meshStandardMaterial color="#9c7547" roughness={1} />
@@ -119,7 +117,6 @@ function Lamp() {
   );
 }
 
-// 広場（中央の石畳の円）
 function Plaza() {
   const pose = surfacePose(0, 0, 0.04);
   return (
@@ -132,12 +129,11 @@ function Plaza() {
   );
 }
 
-// 各場所へ伸びる石畳の道（正方形タイルの並び）
 function Paths() {
   const tiles = useMemo(() => {
     const arr: { a: number; b: number }[] = [];
     for (const p of PLACES) {
-      const N = 7;
+      const N = 8;
       for (let i = 1; i <= N; i++) {
         const t = i / (N + 1);
         arr.push({ a: p.a * t, b: p.b * t });
