@@ -11,11 +11,13 @@ export const WORLD = {
   R: 60, // 球の半径(m)
   fov: 55,
   townRadius: 0.5, // 歩ける円の半径(rad)。R×rad ≒ 30m
-  // 移動（球面キャラコントローラ）
-  move: { speed: 8, turn: 3.4, camLag: 3.5 }, // m/s, rad/s, カメラ追従の速さ
-  // 3人称追従カメラ
-  cam: { back: 9, height: 5.5, lookAhead: 10, lookDown: 0.5 },
-  camIn: { back: 4, height: 3 }, // 入場ドリー時
+  // 移動（視点基準＝WASD/スティックで前左後右にストレイフ）
+  move: { speed: 8 }, // m/s
+  // 視点回転（ドラッグ＝オービット）
+  look: { yaw: 0.005, pitch: 0.004, pitchMin: 0.28, pitchMax: 1.15 }, // 感度(rad/px)・上下角の範囲
+  // オービットカメラ
+  cam: { dist: 12, pitch: 0.6, lookAhead: 1.5 },
+  camIn: { dist: 5 }, // 入場ドリー時
   avatar: { lift: 1.0, size: 0.65 }, // 人間より一回り小さい（直径約1.3m）
 };
 

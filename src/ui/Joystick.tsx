@@ -29,6 +29,7 @@ export function Joystick({ control }: { control: { current: { mx: number; my: nu
   };
 
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation(); // 視点ドラッグ（world-layer）に伝播させない
     activeId.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
     update(e);
