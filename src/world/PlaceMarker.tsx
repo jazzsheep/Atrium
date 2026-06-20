@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { ThreeEvent } from '@react-three/fiber';
-import { surfacePose, WORLD, type PlaceDef } from './worldConfig';
+import { surfacePose, type PlaceDef } from './worldConfig';
 import { House } from './motifs/House';
 import { Balloon } from './motifs/Balloon';
 import { Vortex } from './motifs/Vortex';
@@ -17,7 +17,7 @@ export function PlaceMarker({ def, onTap }: { def: PlaceDef; onTap: (id: PlaceId
 
   return (
     <group position={pose.position} quaternion={pose.quaternion} onClick={handle}>
-      <group scale={WORLD.motifScale}>
+      <group scale={def.scale}>
         {def.motif === 'house' && <House placeId={def.id} />}
         {def.motif === 'balloon' && <Balloon placeId={def.id} />}
         {def.motif === 'vortex' && <Vortex placeId={def.id} />}

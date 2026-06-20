@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { surfacePose, WORLD, PLACES } from './worldConfig';
 
-// 小さな町の点景（家・木・岩）。探索範囲内に決定的に散在させる。
-// 3つの場所モチーフと重ならないよう、home 付近は避ける。
-type Kind = 'cottage' | 'tree' | 'rock';
+// 小さな町（実寸スケール、1単位≒1m）。広場・石畳の道・建物・木・街灯を配置。
+// world group の子として一緒に流れる。3つの場所モチーフと広場の中心は避ける。
+type Kind = 'cottage' | 'cottage2' | 'tree' | 'rock' | 'lamp';
 interface Prop {
   a: number;
   b: number;
@@ -27,40 +27,50 @@ function rng(seed: number) {
 function build(): Prop[] {
   const r = rng(0x5eed42);
   const out: Prop[] = [];
-  const A = WORLD.region.a * 0.92;
-  const B = WORLD.region.b * 0.92;
-  const clearOfPlaces = (a: number, b: number) =>
-    PLACES.every((p) => Math.hypot(a - p.a, b - p.b) > 0.22);
+  const A = WORLD.region.a * 0.95;
+  const B = WORLD.region.b * 0.95;
+  // 場所(0.1rad≒6m)と広場中心は避ける。
+  const ok = (a: number, b: number) =>
+    Math.hypot(a, b) > 0.06 && PLACES.every((p) => Math.hypot(a - p.a, b - p.b) > 0.1);
   const add = (kind: Kind, n: number, sMin: number, sMax: number) => {
     let k = 0;
     let guard = 0;
-    while (k < n && guard < n * 30) {
+    while (k < n && guard < n * 40) {
       guard++;
       const a = (r() * 2 - 1) * A;
       const b = (r() * 2 - 1) * B;
-      if (!clearOfPlaces(a, b)) continue;
+      if (!ok(a, b)) continue;
       out.push({ a, b, kind, scale: sMin + r() * (sMax - sMin), yaw: r() * Math.PI * 2, hue: r() });
       k++;
     }
   };
-  add('tree', 12, 0.7, 1.15);
-  add('cottage', 6, 0.85, 1.2);
-  add('rock', 5, 0.5, 0.9);
+  add('tree', 16, 0.85, 1.25);
+  add('cottage', 10, 0.9, 1.2);
+  add('cottage2', 5, 0.95, 1.15);
+  add('rock', 6, 0.6, 1.0);
+  add('lamp', 8, 0.9, 1.1);
   return out;
 }
 
-function Cottage({ hue }: { hue: number }) {
-  const wall = hue > 0.5 ? '#f3ead7' : '#eef0e6';
+// --- 部品（メートル寸法） ---
+function Cottage({ hue, tall = false }: { hue: number; tall?: boolean }) {
+  const h = tall ? 5 : 3.2;
+  const wall = hue > 0.5 ? '#f3ead7' : '#eae7da';
   const roof = hue > 0.5 ? '#c79a78' : '#8fae7c';
   return (
     <group>
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[0.6, 0.6, 0.6]} />
+      <mesh position={[0, h / 2, 0]}>
+        <boxGeometry args={[4, h, 4]} />
         <meshStandardMaterial color={wall} roughness={1} />
       </mesh>
-      <mesh position={[0, 0.72, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[0.55, 0.4, 4]} />
+      <mesh position={[0, h + 1.0, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[3.2, 2.0, 4]} />
         <meshStandardMaterial color={roof} roughness={1} />
+      </mesh>
+      {/* ドア */}
+      <mesh position={[0, 1.0, 2.02]}>
+        <planeGeometry args={[0.9, 1.6]} />
+        <meshStandardMaterial color="#9c7547" roughness={1} />
       </mesh>
     </group>
   );
@@ -69,17 +79,17 @@ function Cottage({ hue }: { hue: number }) {
 function Tree() {
   return (
     <group>
-      <mesh position={[0, 0.25, 0]}>
-        <cylinderGeometry args={[0.07, 0.09, 0.5, 6]} />
+      <mesh position={[0, 1.2, 0]}>
+        <cylinderGeometry args={[0.22, 0.3, 2.4, 6]} />
         <meshStandardMaterial color="#9c7b54" roughness={1} />
       </mesh>
-      <mesh position={[0, 0.7, 0]}>
-        <coneGeometry args={[0.34, 0.7, 7]} />
+      <mesh position={[0, 3.1, 0]}>
+        <coneGeometry args={[1.7, 3.2, 8]} />
         <meshStandardMaterial color="#86b173" roughness={1} />
       </mesh>
-      <mesh position={[0, 1.0, 0]}>
-        <coneGeometry args={[0.26, 0.5, 7]} />
-        <meshStandardMaterial color="#95bd80" roughness={1} />
+      <mesh position={[0, 4.4, 0]}>
+        <coneGeometry args={[1.2, 2.2, 8]} />
+        <meshStandardMaterial color="#97c082" roughness={1} />
       </mesh>
     </group>
   );
@@ -87,10 +97,68 @@ function Tree() {
 
 function Rock() {
   return (
-    <mesh position={[0, 0.12, 0]}>
-      <dodecahedronGeometry args={[0.22, 0]} />
+    <mesh position={[0, 0.4, 0]}>
+      <dodecahedronGeometry args={[0.8, 0]} />
       <meshStandardMaterial color="#b9c3b0" roughness={1} />
     </mesh>
+  );
+}
+
+function Lamp() {
+  return (
+    <group>
+      <mesh position={[0, 1.5, 0]}>
+        <cylinderGeometry args={[0.08, 0.1, 3, 6]} />
+        <meshStandardMaterial color="#6f6a5d" roughness={1} />
+      </mesh>
+      <mesh position={[0, 3.1, 0]}>
+        <sphereGeometry args={[0.22, 12, 12]} />
+        <meshBasicMaterial color="#ffe9b0" />
+      </mesh>
+    </group>
+  );
+}
+
+// 広場（中央の石畳の円）
+function Plaza() {
+  const pose = surfacePose(0, 0, 0.04);
+  return (
+    <group position={pose.position} quaternion={pose.quaternion}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[6, 40]} />
+        <meshStandardMaterial color="#dccfb6" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
+// 各場所へ伸びる石畳の道（正方形タイルの並び）
+function Paths() {
+  const tiles = useMemo(() => {
+    const arr: { a: number; b: number }[] = [];
+    for (const p of PLACES) {
+      const N = 7;
+      for (let i = 1; i <= N; i++) {
+        const t = i / (N + 1);
+        arr.push({ a: p.a * t, b: p.b * t });
+      }
+    }
+    return arr;
+  }, []);
+  return (
+    <group>
+      {tiles.map((tl, i) => {
+        const pose = surfacePose(tl.a, tl.b, 0.05);
+        return (
+          <group key={i} position={pose.position} quaternion={pose.quaternion}>
+            <mesh>
+              <boxGeometry args={[2.6, 0.08, 2.6]} />
+              <meshStandardMaterial color="#d8cdb8" roughness={1} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
   );
 }
 
@@ -98,14 +166,18 @@ export function Town() {
   const props = useMemo(build, []);
   return (
     <group>
+      <Plaza />
+      <Paths />
       {props.map((p, i) => {
         const pose = surfacePose(p.a, p.b, 0);
         return (
           <group key={i} position={pose.position} quaternion={pose.quaternion}>
             <group rotation={[0, p.yaw, 0]} scale={p.scale}>
               {p.kind === 'cottage' && <Cottage hue={p.hue} />}
+              {p.kind === 'cottage2' && <Cottage hue={p.hue} tall />}
               {p.kind === 'tree' && <Tree />}
               {p.kind === 'rock' && <Rock />}
+              {p.kind === 'lamp' && <Lamp />}
             </group>
           </group>
         );

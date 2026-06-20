@@ -40,7 +40,7 @@ function makeGrassTexture(): CanvasTexture {
   const tex = new CanvasTexture(c);
   tex.colorSpace = SRGBColorSpace;
   tex.wrapS = tex.wrapT = RepeatWrapping;
-  tex.repeat.set(3, 3);
+  tex.repeat.set(10, 10);
   tex.anisotropy = 4;
   return tex;
 }

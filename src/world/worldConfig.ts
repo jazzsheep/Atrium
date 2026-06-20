@@ -1,26 +1,25 @@
 import { Quaternion, Vector3 } from 'three';
 import type { PlaceId } from '../types';
 
-// 世界の設定（すべてここで調整）。
-// モデル: 大きな球の「頂点(真上)付近」を舞台にし、カメラを地表近くに固定。
-// 探索は world group を回す = 地表が舞台の下を流れる（アバターは中央固定）。
-// 探索状態は2つの角度 (a,b):  a = X軸まわり(前後)、b = Z軸まわり(左右)。
-//   group の向き G = Rx(a)·Rz(b)。(a,b)=(0,0) で「町の中心」が真上＝アバターの足元。
+// 世界の設定（すべてここで調整）。単位はおおよそ 1 = 1メートル。
+// モデル: 大きな球の「頂点(真上)付近」を町にし、カメラを3人称で後方やや上に置く。
+// 探索は world group を回す = 地表が下を流れる（アバターは中央固定）。
+// 探索状態は2角度 (a,b): a = 前後(X軸まわり)、b = 左右(Z軸まわり)。G = Rx(a)·Rz(b)。
 
 export type Motif = 'house' | 'balloon' | 'vortex';
 
 export const WORLD = {
-  R: 16, // 球の半径（大きい）
-  fov: 52,
-  // 探索できる角度範囲（rad）。小さな町くらい＝球の一部。
-  region: { a: 0.6, b: 0.95 },
-  // カメラ（地表近く・少し見下ろして地平線を見る）
-  cam: { back: 4.4, height: 2.7, lookAhead: 7, lookDown: 0.6 },
-  // 入場ドリー時のカメラ（場所へ寄る）
-  camIn: { back: 1.7, height: 1.4 },
-  avatar: { lift: 0.9, size: 1.2 },
-  drag: { speed: 0.0026, ease: 7 }, // ドラッグ感度／追従の緩さ
-  motifScale: 1.8, // 場所モチーフの拡大率
+  R: 60, // 球の半径(m)。大きいほど局所が平ら＝実寸の町が自然に乗る。
+  fov: 55,
+  // 探索できる角度範囲(rad)。R×角度 ≒ 物理サイズ。小さな町（約±26m四方）。
+  region: { a: 0.4, b: 0.44 },
+  // カメラ（3人称：後方やや上から通りを見下ろす）。単位m。
+  cam: { back: 12, height: 8, lookAhead: 22, lookDown: 1.5 },
+  // 入場ドリー時（場所へ寄る）
+  camIn: { back: 5, height: 4 },
+  // アバター：人間より一回り小さい（直径約1.3m）。
+  avatar: { lift: 1.0, size: 0.65 },
+  drag: { speed: 0.0012, ease: 7 },
 };
 
 export interface PlaceDef {
@@ -31,15 +30,15 @@ export interface PlaceDef {
   color: string;
   a: number; // 町の中での位置（前後）
   b: number; // 町の中での位置（左右）
-  float: number; // 地表からの浮き（風船など）
+  float: number; // 地表からの浮き(m)
+  scale: number; // モチーフの実寸スケール
 }
 
-// 3つの場所を町の中（探索範囲内）に配置。
+// 3つの場所を町の前方に配置（家=左／風船=中央奥／渦=右）。実寸スケール。
 export const PLACES: PlaceDef[] = [
-  // a>0 = 前方(地平線側), b = 左右。3つを前方に扇状に配置（家=左／風船=中央／渦=右）。
-  { id: 'know', label: '知る', caption: '経歴と理念', motif: 'house', color: '#a9c79a', a: 0.18, b: -0.55, float: 0 },
-  { id: 'visit', label: '見に行く', caption: '作品と展示', motif: 'balloon', color: '#d6c9ec', a: 0.3, b: 0.0, float: 1.7 },
-  { id: 'relate', label: '関わる', caption: '問い合わせ', motif: 'vortex', color: '#cfe6c0', a: 0.18, b: 0.55, float: 0 },
+  { id: 'know', label: '知る', caption: '経歴と理念', motif: 'house', color: '#a9c79a', a: 0.16, b: -0.3, float: 0, scale: 11 },
+  { id: 'visit', label: '見に行く', caption: '作品と展示', motif: 'balloon', color: '#d6c9ec', a: 0.3, b: 0.02, float: 8, scale: 9 },
+  { id: 'relate', label: '関わる', caption: '問い合わせ', motif: 'vortex', color: '#cfe6c0', a: 0.16, b: 0.3, float: 0, scale: 10 },
 ];
 
 export const PLACE_BY_ID = Object.fromEntries(PLACES.map((p) => [p.id, p])) as Record<PlaceId, PlaceDef>;
@@ -57,7 +56,6 @@ export function explorationQuat(a: number, b: number, out = new Quaternion()): Q
 }
 
 // home (a,b) が真上に来るときの地表の向き D = G^{-1}·UP = Rz(-b)·Rx(-a)·UP。
-// これにより、探索が (a,b)=home のとき その地点がちょうど中央（アバターの足元）に来る。
 export function surfaceDir(a: number, b: number): Vector3 {
   const qx = new Quaternion().setFromAxisAngle(X, -a);
   const qz = new Quaternion().setFromAxisAngle(Z, -b);
