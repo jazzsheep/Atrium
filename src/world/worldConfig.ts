@@ -22,7 +22,8 @@ export const WORLD = {
 };
 
 // 水彩NPR（ポスト処理）。enabled=false で即オフ。値は調整しやすいよう外出し。
-export const NPR = { enabled: true, paper: 0.9, posterize: 0.5, desat: 0.2 };
+// paper:紙グレイン / granulation:顔料ムラ / edge:縁の滲み / whiteLift:白抜き(明部を紙白へ) / wobble:手描き揺らぎ
+export const NPR = { enabled: true, paper: 0.5, granulation: 0.5, edge: 2.2, whiteLift: 0.7, wobble: 0.5 };
 
 export interface PlaceDef {
   id: PlaceId;
