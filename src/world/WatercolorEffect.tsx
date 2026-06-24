@@ -3,17 +3,17 @@ import { Uniform } from 'three';
 import { Effect } from 'postprocessing';
 import { NPR } from './worldConfig';
 
-// 水彩NPR（第3段）: 「水彩画のパラパラ漫画」。
-//  - 毎フレーム少しずつ描き直す（boil＝手描きアニメの沸き）。uFrame で全ノイズを揺らす。
-//  - 硬い輪郭をやめ、軽いブラシ感のブラーで CG エッジを和らげる。
-//  - 顔料ムラ（薄い/濃い）＋ 塗り残しの白（明部を紙白へ）＋ 紙のグレイン。
-//  ※「もやもやフィルター越し」を避けるため、テクスチャを静的に固定せず毎フレーム動かす。
+// 水彩NPR（静止画の質感優先）: 送られた参考水彩画に寄せる。
+//  柔らかいブラシ感のブラー → 高明度・透明化 → 顔料ムラ → 塗り残しの白 → 周縁を紙白へ抜く。
+//  ※boil(毎フレーム描き直し)・低fps(パラパラ漫画)は後回し。boil=0 で静的。
 const fragmentShader = /* glsl */ `
 uniform float paperStrength;
 uniform float granulation;
 uniform float whiteLift;
 uniform float wobble;
 uniform float boil;
+uniform float vignette;
+uniform float lift;
 uniform float uFrame;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -32,9 +32,8 @@ float fbm(vec2 p){
   return v;
 }
 float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
-const vec3 PAPER = vec3(0.99, 0.985, 0.96);
+const vec3 PAPER = vec3(0.995, 0.99, 0.965); // 温かい紙の白
 
-// 毎フレーム異なる小さなオフセット（boil＝描き直しの沸き）
 vec2 boilOffset(float seed){
   return (vec2(hash(vec2(uFrame, seed)), hash(vec2(uFrame, seed + 5.0))) - 0.5) * boil;
 }
@@ -43,43 +42,48 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec2 res = resolution;
   vec2 px = texelSize;
 
-  // 手描きの揺らぎ（毎フレーム沸く）
+  // 手描きの揺らぎ
   vec2 jw = boilOffset(1.0);
   vec2 wn = vec2(fbm(uv * res * 0.012 + jw * 1.5), fbm(uv * res * 0.012 + jw * 1.5 + 19.7)) - 0.5;
   vec2 wuv = uv + wn * wobble * px * 9.0;
 
-  // 軽いブラシ感のブラー（半径1.5px）で CG の硬い輪郭を和らげる
+  // 柔らかい筆致のブラー（半径2px）でCGの硬い輪郭を和らげる
   vec3 col = texture(inputBuffer, wuv).rgb * 0.36;
-  col += texture(inputBuffer, wuv + px * vec2( 1.5, 0.0)).rgb * 0.08;
-  col += texture(inputBuffer, wuv + px * vec2(-1.5, 0.0)).rgb * 0.08;
-  col += texture(inputBuffer, wuv + px * vec2( 0.0, 1.5)).rgb * 0.08;
-  col += texture(inputBuffer, wuv + px * vec2( 0.0,-1.5)).rgb * 0.08;
-  col += texture(inputBuffer, wuv + px * vec2( 1.5, 1.5)).rgb * 0.08;
-  col += texture(inputBuffer, wuv + px * vec2(-1.5, 1.5)).rgb * 0.08;
-  col += texture(inputBuffer, wuv + px * vec2( 1.5,-1.5)).rgb * 0.08;
-  col += texture(inputBuffer, wuv + px * vec2(-1.5,-1.5)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2( 2.0, 0.0)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2(-2.0, 0.0)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2( 0.0, 2.0)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2( 0.0,-2.0)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2( 2.0, 2.0)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2(-2.0, 2.0)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2( 2.0,-2.0)).rgb * 0.08;
+  col += texture(inputBuffer, wuv + px * vec2(-2.0,-2.0)).rgb * 0.08;
 
-  // 脱色＋紙白へ（透明な層）
+  // 高明度・透明化（薄い層）：脱色＋紙白へ持ち上げ
   float l = luma(col);
   col = mix(col, vec3(l), 0.12);
-  col = mix(col, PAPER, 0.08);
+  col = mix(col, PAPER, lift);
 
-  // 顔料のムラ（薄い/濃い）：大小2スケール＋毎フレーム沸く
+  // 顔料のムラ（薄い/濃い）：大小2スケール
   vec2 jg = boilOffset(2.0);
   float g1 = fbm(wuv * res * 0.010 + jg * 0.8);
   float g2 = fbm(wuv * res * 0.060 + jg * 0.8 + 4.0);
   float gran = mix(g1, g2, 0.45);
   col *= 1.0 + (gran - 0.5) * granulation;
 
-  // 塗り残しの白：明部を紙の白へ飛ばす
+  // 塗り残しの白：明部を紙白へ飛ばす（水彩の命）
   float b = luma(col);
-  float wl = smoothstep(0.72, 0.96, b) * whiteLift;
+  float wl = smoothstep(0.66, 0.92, b) * whiteLift;
   col = mix(col, PAPER, wl);
 
-  // 紙のグレイン（毎フレームわずかに沸く・乗算）
+  // 周縁を紙白へ抜く（白い紙に描いた絵のように）
+  float r = length((uv - 0.5) * vec2(aspect, 1.0));
+  float vig = smoothstep(0.52, 1.02, r) * vignette;
+  col = mix(col, PAPER, vig);
+
+  // 紙のグレイン（控えめ・乗算）
   vec2 jp = boilOffset(3.0);
   float grain = fbm(uv * res * 0.55 + jp * 0.5);
-  col *= mix(1.0, 0.9 + 0.1 * grain, paperStrength);
+  col *= mix(1.0, 0.92 + 0.08 * grain, paperStrength);
 
   outputColor = vec4(clamp(col, 0.0, 1.0), inputColor.a);
 }
@@ -94,12 +98,13 @@ class WatercolorImpl extends Effect {
         ['whiteLift', new Uniform(NPR.whiteLift)],
         ['wobble', new Uniform(NPR.wobble)],
         ['boil', new Uniform(NPR.boil)],
+        ['vignette', new Uniform(NPR.vignette)],
+        ['lift', new Uniform(NPR.lift)],
         ['uFrame', new Uniform(0)],
       ]),
     });
   }
 
-  // 毎レンダーで uFrame を進める（描画は約 fps に間引かれているので boil もその速さに）
   update() {
     const u = this.uniforms.get('uFrame');
     if (u) u.value = (u.value + 1) % 4096;

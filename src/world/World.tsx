@@ -249,7 +249,7 @@ export function World() {
       onPointerLeave={onUp}
     >
       <Canvas
-        frameloop={NPR.enabled ? 'demand' : 'always'}
+        frameloop={NPR.flipbook ? 'demand' : 'always'}
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         camera={{ position: [0, WORLD.R + 7, 10], fov: WORLD.fov, near: 0.1, far: WORLD.R * 4 }}
@@ -259,7 +259,7 @@ export function World() {
           <ambientLight intensity={1.1} />
           <directionalLight position={[6, 12, 6]} intensity={0.5} color="#fff6df" />
           <Sky />
-          {NPR.enabled && <FrameThrottle fps={NPR.fps} />}
+          {NPR.flipbook && <FrameThrottle fps={NPR.fps} />}
           <Scene refs={{ control, look, didDrag }} />
           {NPR.enabled && (
             <EffectComposer multisampling={0}>
