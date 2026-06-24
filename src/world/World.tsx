@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Group, MathUtils, PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import { useAtrium } from '../store/useAtrium';
 import { WORLD, PLACES, PLACE_BY_ID, surfaceDir, NORTH, NPR } from './worldConfig';
@@ -24,6 +24,16 @@ interface Refs {
   control: { current: { mx: number; my: number } }; // 移動入力（mx=右ストレイフ, my=前）
   look: { current: { dYaw: number; dPitch: number } }; // 視点ドラッグの未処理デルタ
   didDrag: { current: boolean };
+}
+
+// 描画を約 fps に間引く（パラパラ漫画化）。frameloop="demand" を一定間隔で invalidate。
+function FrameThrottle({ fps }: { fps: number }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    const id = setInterval(() => invalidate(), 1000 / fps);
+    return () => clearInterval(id);
+  }, [invalidate, fps]);
+  return null;
 }
 
 // 世界(球)は固定。アバターが視点基準で球面を移動、カメラはドラッグでオービット。
@@ -52,7 +62,7 @@ function Scene({ refs }: { refs: Refs }) {
   };
 
   useFrame((state, dtRaw) => {
-    const dt = Math.min(dtRaw, 0.05);
+    const dt = Math.min(dtRaw, 0.12); // 低fps（パラパラ漫画）でも動きが鈍らないよう上限を広げる
     const p = pos.current;
     const cf = camF.current;
     const lk = refs.look.current;
@@ -239,6 +249,7 @@ export function World() {
       onPointerLeave={onUp}
     >
       <Canvas
+        frameloop={NPR.enabled ? 'demand' : 'always'}
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         camera={{ position: [0, WORLD.R + 7, 10], fov: WORLD.fov, near: 0.1, far: WORLD.R * 4 }}
@@ -248,6 +259,7 @@ export function World() {
           <ambientLight intensity={1.1} />
           <directionalLight position={[6, 12, 6]} intensity={0.5} color="#fff6df" />
           <Sky />
+          {NPR.enabled && <FrameThrottle fps={NPR.fps} />}
           <Scene refs={{ control, look, didDrag }} />
           {NPR.enabled && (
             <EffectComposer multisampling={0}>

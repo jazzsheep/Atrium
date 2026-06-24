@@ -22,8 +22,9 @@ export const WORLD = {
 };
 
 // 水彩NPR（ポスト処理）。enabled=false で即オフ。値は調整しやすいよう外出し。
-// paper:紙グレイン / granulation:顔料ムラ / edge:縁の滲み / whiteLift:白抜き(明部を紙白へ) / wobble:手描き揺らぎ
-export const NPR = { enabled: true, paper: 0.5, granulation: 0.5, edge: 2.2, whiteLift: 0.7, wobble: 0.5 };
+// fps:描画を間引くフレームレート(パラパラ漫画化) / boil:毎フレームの描き直し量(沸き)
+// paper:紙グレイン / granulation:顔料ムラ / whiteLift:塗り残しの白 / wobble:手描き揺らぎ
+export const NPR = { enabled: true, fps: 12, paper: 0.5, granulation: 0.55, whiteLift: 0.7, wobble: 0.6, boil: 1.0 };
 
 export interface PlaceDef {
   id: PlaceId;
