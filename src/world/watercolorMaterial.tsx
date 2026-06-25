@@ -1,15 +1,18 @@
 // オブジェクト側の水彩マテリアル（面に乗る絵具）。
-// MeshStandardMaterial に onBeforeCompile でシェーダ注入:
-//  - map_fragment 後: ワールド空間ノイズで「面の中の濃淡」＋「紙の白の抜け」＋寒暖のゆらぎ
-//  - normal 後: フレネルでシルエットに「濡れ縁（顔料だまり）」。視点ごとに正しく、深度バッファ不要。
-//  - 末尾: 明度を緩く階調化（CG的な滑らかグラデを「平らな wash」に寄せる）。
+// 設計思想（重要）: 水彩の濃淡は「絵としての値（光の当たり方＋物の色）」が背骨で、
+// その上に「水彩の物性」を乗せる。ランダムなムラを主役にしない。
+//   - 値（明暗）は three の通常ライティングが作る（World.tsx の ambient/directional）。
+//   - ここでは物性だけを足す:
+//       map_fragment 後  … 顔料そのものの“ごく僅か”な地色ムラ（大スケール・低振幅）
+//       normal 後        … シルエットの濡れ縁（フレネル, 控えめ）
+//       末尾(ライト後)   … granulation は「暗部ほど」効き、紙の抜けは「明部ほど」出る
+//                          （＝物性が値に従う。ここが“ランダムに見える”を回避する肝）
 
 export const watercolorUniforms = {
-  uGran: { value: 1.2 }, // 面の中の濃淡ムラ
-  uHole: { value: 0.55 }, // 紙の白の抜け
-  uEdge: { value: 1.1 }, // 濡れ縁の強さ
-  uEdgeP: { value: 2.2 }, // 濡れ縁の鋭さ（大きいほど縁だけ）
-  uFlat: { value: 0.5 }, // 明度の階調化（0=滑らか, 1=平ら）
+  uGran: { value: 0.8 }, // 紙目の granulation（暗部ほど顕著）
+  uHole: { value: 0.5 }, // 明部の紙の抜け（dry brush / 塗り残し）
+  uEdge: { value: 0.6 }, // シルエットの濡れ縁（控えめ）
+  uEdgeP: { value: 2.6 }, // 濡れ縁の鋭さ
 };
 
 const noiseGLSL = /* glsl */ `
@@ -30,7 +33,6 @@ export function watercolorOnBeforeCompile(shader: any) {
   shader.uniforms.uHole = watercolorUniforms.uHole;
   shader.uniforms.uEdge = watercolorUniforms.uEdge;
   shader.uniforms.uEdgeP = watercolorUniforms.uEdgeP;
-  shader.uniforms.uFlat = watercolorUniforms.uFlat;
 
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', '#include <common>\nvarying vec3 vWcPos;')
@@ -39,47 +41,51 @@ export function watercolorOnBeforeCompile(shader: any) {
   shader.fragmentShader = shader.fragmentShader
     .replace(
       '#include <common>',
-      '#include <common>\nvarying vec3 vWcPos;\nuniform float uGran;\nuniform float uHole;\nuniform float uEdge;\nuniform float uEdgeP;\nuniform float uFlat;\nfloat wcLuma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\n' +
+      '#include <common>\nvarying vec3 vWcPos;\nuniform float uGran;\nuniform float uHole;\nuniform float uEdge;\nuniform float uEdgeP;\nfloat wcLuma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\n' +
         noiseGLSL,
     )
     .replace(
       '#include <map_fragment>',
       `#include <map_fragment>
 {
-  float wgA = wcFbm(vWcPos * 0.09);           // 大きな wash の濃淡（滑らか）
-  float wgB = wcFbm(vWcPos * 0.40 + 4.0);     // 中スケール blotch（水彩のムラの主役）
-  float wgC = wcFbm(vWcPos * 1.30 + 11.0);    // 細かい顔料粒（granulation）
-  float wgran = wgA * 0.45 + wgB * 0.55;
-  diffuseColor.rgb *= 1.0 + (wgran - 0.5) * uGran;                       // 面の中の濃淡
-  diffuseColor.rgb += vec3(0.05, 0.0, -0.06) * (wgB - 0.5) * uGran;      // 寒暖のゆらぎ
-  diffuseColor.rgb *= 1.0 + (wgC - 0.5) * 0.13;                          // 細かい粒
-  // 紙の白の抜け：中スケールの塊（斑点でなく、まとまった明るい部分）
-  float hole = smoothstep(0.60, 0.33, wgB) * uHole;
-  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.99, 0.985, 0.965), hole);
+  // 顔料そのものの“ごく僅か”な地色ムラ。大スケール・低振幅で、汚れに見せない。
+  float base = wcFbm(vWcPos * 0.07);
+  diffuseColor.rgb *= 1.0 + (base - 0.5) * 0.08;
 }`,
     )
     .replace(
       '#include <normal_fragment_begin>',
       `#include <normal_fragment_begin>
 {
+  // シルエットの濡れ縁：grazing 角で顔料が少し溜まる（深度不要・視点ごとに正しい）。
   float wcFres = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), uEdgeP);
-  // 縁に顔料が溜まる（黒線でなく、少し濃く・寒色寄り）
-  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.5, 0.56, 0.68), wcFres * uEdge);
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.66, 0.72), wcFres * uEdge);
 }`,
     )
     .replace(
       '#include <dithering_fragment>',
       `#include <dithering_fragment>
 {
-  // 明度を緩く階調化：CG的な滑らかグラデを「平らな wash」に寄せる。
-  // ワールド空間ノイズで段の境界を揺らし、機械的なバンドにしない。
+  // ★物性は“値（明暗）に従う”。ここが「ランダムに見える」を回避する肝。
   float L = wcLuma(gl_FragColor.rgb);
-  if (L > 0.001) {
-    float jitter = (wcFbm(vWcPos * 0.7) - 0.5) * 0.10;
-    float q = floor(L * 4.0 + 0.5 + jitter) / 4.0;     // ~4段
-    float Lq = mix(L, clamp(q, 0.02, 1.0), uFlat);     // uFlat で滑らか↔平ら
-    gl_FragColor.rgb *= Lq / L;
-  }
+
+  // 紙目の granulation：暗部ほど顔料が溜まって粒立つ。明部はクリーンに残す。
+  float g1 = wcFbm(vWcPos * 1.10);
+  float g2 = wcFbm(vWcPos * 3.20 + 7.0);
+  float g3 = wcFbm(vWcPos * 7.50 + 13.0);                 // 細かい紙目
+  float gran = (g1 * 0.42 + g2 * 0.36 + g3 * 0.22) - 0.5;
+  float granVis = 0.30 + 0.9 * (1.0 - L);                 // 明部でも少し／暗部で顕著
+  gl_FragColor.rgb *= 1.0 + gran * uGran * granVis;
+
+  // 影側の richness：暗部はわずかに深く・暖色寄り（溜まった顔料の濃さ）。
+  float shade = smoothstep(0.55, 0.18, L);
+  gl_FragColor.rgb *= 1.0 - shade * 0.06;
+  gl_FragColor.rgb += vec3(0.03, 0.005, -0.02) * shade;
+
+  // 紙の抜け（dry brush）：明部ほど、まとまった所で紙の白が覗く。
+  float paperN = wcFbm(vWcPos * 0.85 + 21.0);
+  float paper = smoothstep(0.70, 0.92, L) * smoothstep(0.46, 0.64, paperN) * uHole;
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.985, 0.982, 0.968), paper);
 }`,
     );
 }
