@@ -244,9 +244,10 @@ export function World() {
         camera={{ position: [0, WORLD.R + 7, 10], fov: WORLD.fov, near: 0.1, far: WORLD.R * 4 }}
       >
         <TransitionContext.Provider value={transition}>
-          {/* 値（濃淡）の背骨は光と物の色。水彩の物性は materclor 側で上に乗せる。 */}
-          <ambientLight intensity={0.62} />
-          <directionalLight position={[6, 11, 5]} intensity={0.92} color="#fff7e6" />
+          {/* ハイキーで平らな光。強い太陽の明暗は作らず、面ごとのごく僅かな値差だけ。
+             透明感・紙の白はマテリアル側の透明水彩モデルが担う。 */}
+          <ambientLight intensity={0.92} />
+          <directionalLight position={[6, 11, 5]} intensity={0.3} color="#fff7e6" />
           <Sky />
           <Scene refs={{ control, look, didDrag }} />
           {NPR.enabled && (

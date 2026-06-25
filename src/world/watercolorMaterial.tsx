@@ -9,9 +9,10 @@
 //                          （＝物性が値に従う。ここが“ランダムに見える”を回避する肝）
 
 export const watercolorUniforms = {
+  uDensity: { value: 0.6 }, // 顔料の濃さ＝紙にどれだけ色を乗せるか（小さいほど透明・ハイキー）
   uGran: { value: 0.8 }, // 紙目の granulation（暗部ほど顕著）
-  uHole: { value: 0.5 }, // 明部の紙の抜け（dry brush / 塗り残し）
-  uEdge: { value: 0.6 }, // シルエットの濡れ縁（控えめ）
+  uHole: { value: 0.4 }, // 塗り残しの白（紙が透ける塊）
+  uEdge: { value: 0.5 }, // シルエットの濡れ縁（控えめ）
   uEdgeP: { value: 2.6 }, // 濡れ縁の鋭さ
 };
 
@@ -29,6 +30,7 @@ float wcFbm(vec3 p){ float v = 0.0; float a = 0.5; for (int i = 0; i < 3; i++){ 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function watercolorOnBeforeCompile(shader: any) {
+  shader.uniforms.uDensity = watercolorUniforms.uDensity;
   shader.uniforms.uGran = watercolorUniforms.uGran;
   shader.uniforms.uHole = watercolorUniforms.uHole;
   shader.uniforms.uEdge = watercolorUniforms.uEdge;
@@ -41,7 +43,7 @@ export function watercolorOnBeforeCompile(shader: any) {
   shader.fragmentShader = shader.fragmentShader
     .replace(
       '#include <common>',
-      '#include <common>\nvarying vec3 vWcPos;\nuniform float uGran;\nuniform float uHole;\nuniform float uEdge;\nuniform float uEdgeP;\nfloat wcLuma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\n' +
+      '#include <common>\nvarying vec3 vWcPos;\nuniform float uDensity;\nuniform float uGran;\nuniform float uHole;\nuniform float uEdge;\nuniform float uEdgeP;\nfloat wcLuma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\n' +
         noiseGLSL,
     )
     .replace(
@@ -66,26 +68,29 @@ export function watercolorOnBeforeCompile(shader: any) {
       '#include <dithering_fragment>',
       `#include <dithering_fragment>
 {
-  // ★物性は“値（明暗）に従う”。ここが「ランダムに見える」を回避する肝。
-  float L = wcLuma(gl_FragColor.rgb);
+  // ★透明水彩モデル: 「白い紙に薄い顔料を乗せる」。
+  //   立体を陰影で塗り潰さず、紙の白を主役に残す＝ハイキー・透明・luminous。
+  //   最終色 = 紙白 と 顔料色 を density で混ぜる（density 小=透けて明るい）。
+  vec3 paper = vec3(0.992, 0.988, 0.972);
+  vec3 pigment = gl_FragColor.rgb;          // 物の色×弱い光（値の背骨）
+  float L = wcLuma(pigment);
 
-  // 紙目の granulation：暗部ほど顔料が溜まって粒立つ。明部はクリーンに残す。
+  // 紙目の granulation（顔料の溜まりムラ）。低周波は弱め＝雲のような“もや”を避ける。
   float g1 = wcFbm(vWcPos * 1.10);
   float g2 = wcFbm(vWcPos * 3.20 + 7.0);
-  float g3 = wcFbm(vWcPos * 7.50 + 13.0);                 // 細かい紙目
-  float gran = (g1 * 0.42 + g2 * 0.36 + g3 * 0.22) - 0.5;
-  float granVis = 0.30 + 0.9 * (1.0 - L);                 // 明部でも少し／暗部で顕著
-  gl_FragColor.rgb *= 1.0 + gran * uGran * granVis;
+  float g3 = wcFbm(vWcPos * 7.50 + 13.0);
+  float gran = (g1 * 0.30 + g2 * 0.40 + g3 * 0.30) - 0.5;
 
-  // 影側の richness：暗部はわずかに深く・暖色寄り（溜まった顔料の濃さ）。
-  float shade = smoothstep(0.55, 0.18, L);
-  gl_FragColor.rgb *= 1.0 - shade * 0.06;
-  gl_FragColor.rgb += vec3(0.03, 0.005, -0.02) * shade;
+  // 顔料の濃さ(density)：薄い base ＋ granulation ＋ 暗部はやや濃く。
+  float density = uDensity + gran * uGran * 0.5 + (1.0 - L) * 0.16;
 
-  // 紙の抜け（dry brush）：明部ほど、まとまった所で紙の白が覗く。
-  float paperN = wcFbm(vWcPos * 0.85 + 21.0);
-  float paper = smoothstep(0.70, 0.92, L) * smoothstep(0.46, 0.64, paperN) * uHole;
-  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.985, 0.982, 0.968), paper);
+  // 塗り残しの白：紙が覗く塊（明部ほど強い）。雲にしないよう中スケールで。
+  float washN = wcFbm(vWcPos * 1.15 + 30.0);
+  float leaveWhite = smoothstep(0.48, 0.66, washN) * (0.3 + 0.7 * smoothstep(0.35, 0.82, L)) * uHole;
+  density = clamp(density - leaveWhite, 0.0, 1.0);
+
+  // 透明に重ねる：薄いほど紙の白が透ける。
+  gl_FragColor.rgb = mix(paper, pigment, density);
 }`,
     );
 }
