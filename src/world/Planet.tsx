@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
 import { WORLD } from './worldConfig';
+import { WMat } from './watercolorMaterial';
 
 // 水彩タッチの草原（大きな球＝惑星）。手続き的テクスチャでアセット不要・軽量。
 // UVの極(つなぎ目)は左右の地平線へ逃がす（mesh を Z軸90°回転）ので、舞台の真上では破綻しない。
@@ -62,7 +63,7 @@ export function Planet() {
     // Z軸90°回転でUVの極を左右(地平線)へ逃がす。
     <mesh rotation={[0, 0, Math.PI / 2]}>
       <sphereGeometry args={[WORLD.R, 96, 96]} />
-      <meshStandardMaterial map={texture} roughness={1} metalness={0} />
+      <WMat map={texture} roughness={1} metalness={0} />
     </mesh>
   );
 }

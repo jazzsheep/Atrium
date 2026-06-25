@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { surfacePose, WORLD, PLACES } from './worldConfig';
+import { WMat } from './watercolorMaterial';
 
 // 小さな町（実寸スケール、1単位≒1m）。広場・石畳の道・建物・木・街灯を配置。
 // 歩ける円(townRadius)の中に決定的に散在。場所モチーフと中央広場は避ける。
@@ -60,15 +61,15 @@ function Cottage({ hue, tall = false }: { hue: number; tall?: boolean }) {
     <group>
       <mesh position={[0, h / 2, 0]}>
         <boxGeometry args={[4, h, 4]} />
-        <meshStandardMaterial color={wall} roughness={1} />
+        <WMat color={wall} roughness={1} />
       </mesh>
       <mesh position={[0, h + 1.0, 0]} rotation={[0, Math.PI / 4, 0]}>
         <coneGeometry args={[3.2, 2.0, 4]} />
-        <meshStandardMaterial color={roof} roughness={1} />
+        <WMat color={roof} roughness={1} />
       </mesh>
       <mesh position={[0, 1.0, 2.02]}>
         <planeGeometry args={[0.9, 1.6]} />
-        <meshStandardMaterial color="#9c7547" roughness={1} />
+        <WMat color="#9c7547" roughness={1} />
       </mesh>
     </group>
   );
@@ -79,15 +80,15 @@ function Tree() {
     <group>
       <mesh position={[0, 1.2, 0]}>
         <cylinderGeometry args={[0.22, 0.3, 2.4, 6]} />
-        <meshStandardMaterial color="#9c7b54" roughness={1} />
+        <WMat color="#9c7b54" roughness={1} />
       </mesh>
       <mesh position={[0, 3.1, 0]}>
         <coneGeometry args={[1.7, 3.2, 8]} />
-        <meshStandardMaterial color="#86b173" roughness={1} />
+        <WMat color="#86b173" roughness={1} />
       </mesh>
       <mesh position={[0, 4.4, 0]}>
         <coneGeometry args={[1.2, 2.2, 8]} />
-        <meshStandardMaterial color="#97c082" roughness={1} />
+        <WMat color="#97c082" roughness={1} />
       </mesh>
     </group>
   );
@@ -97,7 +98,7 @@ function Rock() {
   return (
     <mesh position={[0, 0.4, 0]}>
       <dodecahedronGeometry args={[0.8, 0]} />
-      <meshStandardMaterial color="#b9c3b0" roughness={1} />
+      <WMat color="#b9c3b0" roughness={1} />
     </mesh>
   );
 }
@@ -107,7 +108,7 @@ function Lamp() {
     <group>
       <mesh position={[0, 1.5, 0]}>
         <cylinderGeometry args={[0.08, 0.1, 3, 6]} />
-        <meshStandardMaterial color="#6f6a5d" roughness={1} />
+        <WMat color="#6f6a5d" roughness={1} />
       </mesh>
       <mesh position={[0, 3.1, 0]}>
         <sphereGeometry args={[0.22, 12, 12]} />
@@ -123,7 +124,7 @@ function Plaza() {
     <group position={pose.position} quaternion={pose.quaternion}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[6, 40]} />
-        <meshStandardMaterial color="#dccfb6" roughness={1} />
+        <WMat color="#dccfb6" roughness={1} />
       </mesh>
     </group>
   );
@@ -149,7 +150,7 @@ function Paths() {
           <group key={i} position={pose.position} quaternion={pose.quaternion}>
             <mesh>
               <boxGeometry args={[2.6, 0.08, 2.6]} />
-              <meshStandardMaterial color="#d8cdb8" roughness={1} />
+              <WMat color="#d8cdb8" roughness={1} />
             </mesh>
           </group>
         );
