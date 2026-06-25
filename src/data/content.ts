@@ -28,7 +28,7 @@ export interface Channel {
 }
 
 export const content = {
-  artist: { name: '奥中章人', role: '美術家', note: '公開情報に基づく提案デモ' },
+  artist: { name: '（作家名）', role: '美術家', note: '公開情報に基づく提案デモ' },
 
   know: {
     // 知る（家）
