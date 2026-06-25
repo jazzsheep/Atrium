@@ -124,7 +124,7 @@ function Plaza() {
     <group position={pose.position} quaternion={pose.quaternion}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[6, 40]} />
-        <WMat color="#dccfb6" roughness={1} />
+        <WMat color="#e4d0a4" roughness={1} />
       </mesh>
     </group>
   );
@@ -150,7 +150,7 @@ function Paths() {
           <group key={i} position={pose.position} quaternion={pose.quaternion}>
             <mesh>
               <boxGeometry args={[2.6, 0.08, 2.6]} />
-              <WMat color="#d8cdb8" roughness={1} />
+              <WMat color="#dcc8a0" roughness={1} />
             </mesh>
           </group>
         );

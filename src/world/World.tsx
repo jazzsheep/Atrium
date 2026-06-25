@@ -244,9 +244,9 @@ export function World() {
         camera={{ position: [0, WORLD.R + 7, 10], fov: WORLD.fov, near: 0.1, far: WORLD.R * 4 }}
       >
         <TransitionContext.Provider value={transition}>
-          {/* wash の濃淡が出るよう、ほどよい明暗（環境光＋指向性） */}
-          <ambientLight intensity={0.8} />
-          <directionalLight position={[6, 12, 6]} intensity={0.85} color="#fff6df" />
+          {/* 平らな wash に寄せる：環境光を強め＋指向性は弱めて CG 的グラデを抑える */}
+          <ambientLight intensity={0.95} />
+          <directionalLight position={[6, 12, 6]} intensity={0.5} color="#fff6df" />
           <Sky />
           <Scene refs={{ control, look, didDrag }} />
           {NPR.enabled && (

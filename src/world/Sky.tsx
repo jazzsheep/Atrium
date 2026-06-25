@@ -12,11 +12,10 @@ function makeSkyTexture(): CanvasTexture {
   c.height = h;
   const ctx = c.getContext('2d')!;
   const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0.0, '#b8d3ea'); // 天頂（淡い青）
-  g.addColorStop(0.22, '#dde9f1');
-  g.addColorStop(0.45, '#f2f7f7');
-  g.addColorStop(0.7, '#fbfbf6'); // ほぼ紙の白
-  g.addColorStop(1.0, '#f5f2e8'); // 地平（ごく淡い暖色）
+  g.addColorStop(0.0, '#dce8f2'); // 天頂（ごく淡い青の気配）
+  g.addColorStop(0.3, '#eef4f5');
+  g.addColorStop(0.6, '#f8f9f4'); // ほぼ紙の白
+  g.addColorStop(1.0, '#f6f3ea'); // 地平（ごく淡い暖色）
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
   const tex = new CanvasTexture(c);

@@ -55,7 +55,13 @@ if (process.env.SHOT_HIDEUI !== '0') {
     .catch(() => {});
 }
 await page.waitForTimeout(waitMs);
-await page.screenshot({ path: out });
+// SHOT_CLIP="x,y,w,h" で一部だけ原寸キャプチャ（細部の確認用）
+let clip;
+if (process.env.SHOT_CLIP) {
+  const [x, y, w, h] = process.env.SHOT_CLIP.split(',').map(Number);
+  clip = { x, y, width: w, height: h };
+}
+await page.screenshot({ path: out, ...(clip ? { clip } : {}) });
 await browser.close();
 
 if (logs.length) {
