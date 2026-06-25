@@ -1,13 +1,13 @@
 // オブジェクト側の水彩マテリアル（面に乗る絵具）。
-// MeshStandardMaterial に onBeforeCompile でシェーダ注入し、
-//  - ワールド空間ノイズで「面の中の濃淡（顔料ムラ）」
-//  - 低ノイズ域で「紙の白が抜ける（塗り残し）」
-// を加える。世界は固定なので絵具が面に貼り付き、視点を動かしてもフィルター感が出ない。
+// MeshStandardMaterial に onBeforeCompile でシェーダ注入:
+//  - map_fragment 後: ワールド空間ノイズで「面の中の濃淡」＋「紙の白の抜け」＋寒暖のゆらぎ
+//  - normal 後: フレネルでシルエットに「濡れ縁（顔料だまり）」。視点ごとに正しく、深度バッファ不要。
 
-// 共有ユニフォーム（後でライブ調整しやすいよう外出し）
 export const watercolorUniforms = {
-  uGran: { value: 0.9 }, // 濃淡ムラの強さ
-  uHole: { value: 0.4 }, // 紙の白の抜け
+  uGran: { value: 1.2 }, // 面の中の濃淡ムラ
+  uHole: { value: 0.55 }, // 紙の白の抜け
+  uEdge: { value: 1.1 }, // 濡れ縁の強さ
+  uEdgeP: { value: 2.2 }, // 濡れ縁の鋭さ（大きいほど縁だけ）
 };
 
 const noiseGLSL = /* glsl */ `
@@ -26,6 +26,8 @@ float wcFbm(vec3 p){ float v = 0.0; float a = 0.5; for (int i = 0; i < 3; i++){ 
 export function watercolorOnBeforeCompile(shader: any) {
   shader.uniforms.uGran = watercolorUniforms.uGran;
   shader.uniforms.uHole = watercolorUniforms.uHole;
+  shader.uniforms.uEdge = watercolorUniforms.uEdge;
+  shader.uniforms.uEdgeP = watercolorUniforms.uEdgeP;
 
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', '#include <common>\nvarying vec3 vWcPos;')
@@ -34,27 +36,35 @@ export function watercolorOnBeforeCompile(shader: any) {
   shader.fragmentShader = shader.fragmentShader
     .replace(
       '#include <common>',
-      '#include <common>\nvarying vec3 vWcPos;\nuniform float uGran;\nuniform float uHole;\n' + noiseGLSL,
+      '#include <common>\nvarying vec3 vWcPos;\nuniform float uGran;\nuniform float uHole;\nuniform float uEdge;\nuniform float uEdgeP;\n' +
+        noiseGLSL,
     )
     .replace(
       '#include <map_fragment>',
       `#include <map_fragment>
 {
-  float wg1 = wcFbm(vWcPos * 0.18);
-  float wg2 = wcFbm(vWcPos * 0.90 + 11.0);
-  float wgran = mix(wg1, wg2, 0.5);
-  // 面の中の濃淡（顔料ムラ）
-  diffuseColor.rgb *= 1.0 + (wgran - 0.5) * uGran;
-  // 寒暖のゆらぎ（水彩の色の揺れ）
-  diffuseColor.rgb += vec3(0.05, 0.0, -0.04) * (wg2 - 0.5) * uGran;
-  // 紙の白が抜ける（低ノイズ域＝塗り残し）
-  float hole = smoothstep(0.50, 0.26, wg1) * uHole;
+  float wgA = wcFbm(vWcPos * 0.10);           // 大きな wash の濃淡（滑らか）
+  float wgB = wcFbm(vWcPos * 0.42 + 4.0);     // 中スケール
+  float wgran = wgA * 0.62 + wgB * 0.38;
+  diffuseColor.rgb *= 1.0 + (wgran - 0.5) * uGran;                       // 面の中の濃淡
+  diffuseColor.rgb += vec3(0.06, 0.0, -0.05) * (wgB - 0.5) * uGran;      // 寒暖のゆらぎ
+  // 紙の白の抜け：中スケールの塊（斑点でなく、まとまった明るい部分）
+  float hole = smoothstep(0.58, 0.32, wgB) * uHole;
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.99, 0.985, 0.965), hole);
+}`,
+    )
+    .replace(
+      '#include <normal_fragment_begin>',
+      `#include <normal_fragment_begin>
+{
+  float wcFres = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), uEdgeP);
+  // 縁に顔料が溜まる（黒線でなく、少し濃く・寒色寄り）
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.5, 0.56, 0.68), wcFres * uEdge);
 }`,
     );
 }
 
-// meshStandardMaterial のドロップイン置き換え。色等は props で渡す。
+// meshStandardMaterial のドロップイン置き換え。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function WMat(props: any) {
   return <meshStandardMaterial {...props} onBeforeCompile={watercolorOnBeforeCompile} />;

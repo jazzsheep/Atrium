@@ -255,9 +255,9 @@ export function World() {
         camera={{ position: [0, WORLD.R + 7, 10], fov: WORLD.fov, near: 0.1, far: WORLD.R * 4 }}
       >
         <TransitionContext.Provider value={transition}>
-          {/* 水彩＝平坦な陰影にしたいので環境光多め・指向性は弱め */}
-          <ambientLight intensity={1.1} />
-          <directionalLight position={[6, 12, 6]} intensity={0.5} color="#fff6df" />
+          {/* wash の濃淡が出るよう、ほどよい明暗（環境光＋指向性） */}
+          <ambientLight intensity={0.8} />
+          <directionalLight position={[6, 12, 6]} intensity={0.85} color="#fff6df" />
           <Sky />
           {NPR.flipbook && <FrameThrottle fps={NPR.fps} />}
           <Scene refs={{ control, look, didDrag }} />

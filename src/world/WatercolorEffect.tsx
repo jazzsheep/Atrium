@@ -1,18 +1,15 @@
 import { forwardRef, useMemo } from 'react';
 import { Uniform } from 'three';
-import { Effect, EffectAttribute } from 'postprocessing';
-import { NPR } from './worldConfig';
+import { Effect } from 'postprocessing';
+import { nprState } from './nprControls';
 
-// 水彩NPR スクリーン後処理。
-//  柔らかいブラシ感のブラー → 濡れ縁(シルエットに顔料が溜まる/深度ベース＝視点ごとに正しい)
-//   → 明部を紙白へ → 紙のグレイン。
-//  面の中の絵具（顔料ムラ/白の抜け）は watercolorMaterial（オブジェクト側）が担う。
+// 水彩NPR スクリーン後処理（軽め）。縁/濃淡/白抜きは面マテリアル側が担う。
+// ここは: 柔らかい筆致のブラー → 明部を紙白へ → 紙のグレイン → 手描き揺らぎ。
+// 深度は使わない（postprocessingのdepth blit警告を回避）。
 const fragmentShader = /* glsl */ `
 uniform float paperStrength;
 uniform float whiteLift;
 uniform float wobble;
-uniform float edgeStrength;
-uniform float edgeScale;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p){
@@ -28,7 +25,7 @@ float fbm(vec2 p){ float v = 0.0; float a = 0.5; for (int i = 0; i < 3; i++){ v 
 float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
 const vec3 PAPER = vec3(0.995, 0.99, 0.965);
 
-void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor){
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor){
   vec2 res = resolution;
   vec2 px = texelSize;
 
@@ -47,18 +44,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   col += texture(inputBuffer, wuv + px * vec2( 2.0,-2.0)).rgb * 0.08;
   col += texture(inputBuffer, wuv + px * vec2(-2.0,-2.0)).rgb * 0.08;
 
-  // 濡れ縁：シルエット（深度の不連続）に顔料が溜まる。視点ごとに正しく再計算される。
-  float zc = getViewZ(readDepth(wuv));
-  float dsum = 0.0;
-  dsum += abs(getViewZ(readDepth(wuv + px * vec2( 1.5, 0.0))) - zc);
-  dsum += abs(getViewZ(readDepth(wuv + px * vec2(-1.5, 0.0))) - zc);
-  dsum += abs(getViewZ(readDepth(wuv + px * vec2( 0.0, 1.5))) - zc);
-  dsum += abs(getViewZ(readDepth(wuv + px * vec2( 0.0,-1.5))) - zc);
-  float e = clamp(dsum / edgeScale, 0.0, 1.0);
-  e *= 0.5 + 0.5 * fbm(uv * res * 0.25); // 不揃いに（手描きの縁）
-  // 縁を少し濃く・寒色寄りに（黒い線でなく顔料だまり）
-  col = mix(col, col * vec3(0.62, 0.66, 0.74), e * edgeStrength);
-
   // 明部を紙白へ（ハイライト＝塗り残しの白）
   float b = luma(col);
   col = mix(col, PAPER, smoothstep(0.82, 0.98, b) * whiteLift);
@@ -74,15 +59,19 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
 class WatercolorImpl extends Effect {
   constructor() {
     super('Watercolor', fragmentShader, {
-      attributes: EffectAttribute.DEPTH,
       uniforms: new Map<string, Uniform>([
-        ['paperStrength', new Uniform(NPR.paper)],
-        ['whiteLift', new Uniform(NPR.whiteLift)],
-        ['wobble', new Uniform(NPR.wobble)],
-        ['edgeStrength', new Uniform(NPR.edge)],
-        ['edgeScale', new Uniform(NPR.edgeScale)],
+        ['paperStrength', new Uniform(nprState.paper)],
+        ['whiteLift', new Uniform(nprState.whiteLift)],
+        ['wobble', new Uniform(nprState.wobble)],
       ]),
     });
+  }
+
+  // ライブ調整値を毎フレーム同期
+  update() {
+    this.uniforms.get('paperStrength')!.value = nprState.paper;
+    this.uniforms.get('whiteLift')!.value = nprState.whiteLift;
+    this.uniforms.get('wobble')!.value = nprState.wobble;
   }
 }
 
