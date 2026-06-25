@@ -21,21 +21,19 @@ export const WORLD = {
   avatar: { lift: 1.0, size: 0.65 }, // 人間より一回り小さい（直径約1.3m）
 };
 
-// 水彩NPR（ポスト処理）。enabled=false で即オフ。値は調整しやすいよう外出し。
+// 水彩NPR（スクリーン後処理・軽め）。enabled=false で即オフ。
+// ※本命はオブジェクト側の水彩マテリアル（面に乗る絵具）。ここは仕上げの薄い処理。
 // flipbook:パラパラ漫画化(低fps+boil)。今は後回しで false。
-// paper:紙グレイン / granulation:顔料ムラ / whiteLift:塗り残しの白 / wobble:手描き揺らぎ
-// vignette:周縁を紙白へ抜く / lift:全体の透明化(紙白寄せ) / boil:毎フレームの描き直し量
 export const NPR = {
   enabled: true,
   flipbook: false,
   fps: 12,
-  paper: 0.45,
-  granulation: 0.6,
-  whiteLift: 0.85,
-  wobble: 0.5,
+  paper: 0.3,
+  granulation: 0.5,
+  whiteLift: 0.7,
+  wobble: 0.4,
   boil: 0.0,
-  vignette: 0.5,
-  lift: 0.12,
+  lift: 0.05,
 };
 
 export interface PlaceDef {

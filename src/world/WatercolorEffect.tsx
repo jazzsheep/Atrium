@@ -3,16 +3,16 @@ import { Uniform } from 'three';
 import { Effect } from 'postprocessing';
 import { NPR } from './worldConfig';
 
-// 水彩NPR（静止画の質感優先）: 送られた参考水彩画に寄せる。
-//  柔らかいブラシ感のブラー → 高明度・透明化 → 顔料ムラ → 塗り残しの白 → 周縁を紙白へ抜く。
-//  ※boil(毎フレーム描き直し)・低fps(パラパラ漫画)は後回し。boil=0 で静的。
+// 水彩NPR スクリーン後処理（軽め）。
+//  ※本命は「面に乗る絵具」=オブジェクト側の水彩マテリアル（別途）。ここは仕上げの薄い処理に留める。
+//  柔らかいブラシ感のブラー → 紙白へ軽く持ち上げ → 顔料ムラ → 塗り残しの白 → 紙のグレイン。
+//  vignette(画面端の白抜き)・脱色は撤去（濁り/不自然の原因）。
 const fragmentShader = /* glsl */ `
 uniform float paperStrength;
 uniform float granulation;
 uniform float whiteLift;
 uniform float wobble;
 uniform float boil;
-uniform float vignette;
 uniform float lift;
 uniform float uFrame;
 
@@ -32,7 +32,7 @@ float fbm(vec2 p){
   return v;
 }
 float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
-const vec3 PAPER = vec3(0.995, 0.99, 0.965); // 温かい紙の白
+const vec3 PAPER = vec3(0.995, 0.99, 0.965);
 
 vec2 boilOffset(float seed){
   return (vec2(hash(vec2(uFrame, seed)), hash(vec2(uFrame, seed + 5.0))) - 0.5) * boil;
@@ -47,7 +47,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec2 wn = vec2(fbm(uv * res * 0.012 + jw * 1.5), fbm(uv * res * 0.012 + jw * 1.5 + 19.7)) - 0.5;
   vec2 wuv = uv + wn * wobble * px * 9.0;
 
-  // 柔らかい筆致のブラー（半径2px）でCGの硬い輪郭を和らげる
+  // 柔らかい筆致のブラー（半径2px）
   vec3 col = texture(inputBuffer, wuv).rgb * 0.36;
   col += texture(inputBuffer, wuv + px * vec2( 2.0, 0.0)).rgb * 0.08;
   col += texture(inputBuffer, wuv + px * vec2(-2.0, 0.0)).rgb * 0.08;
@@ -58,32 +58,25 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   col += texture(inputBuffer, wuv + px * vec2( 2.0,-2.0)).rgb * 0.08;
   col += texture(inputBuffer, wuv + px * vec2(-2.0,-2.0)).rgb * 0.08;
 
-  // 高明度・透明化（薄い層）：脱色＋紙白へ持ち上げ
-  float l = luma(col);
-  col = mix(col, vec3(l), 0.12);
+  // 紙白へごく軽く持ち上げ（脱色はしない＝色を濁らせない）
   col = mix(col, PAPER, lift);
 
-  // 顔料のムラ（薄い/濃い）：大小2スケール
+  // 顔料のムラ（薄い/濃い）
   vec2 jg = boilOffset(2.0);
   float g1 = fbm(wuv * res * 0.010 + jg * 0.8);
   float g2 = fbm(wuv * res * 0.060 + jg * 0.8 + 4.0);
   float gran = mix(g1, g2, 0.45);
   col *= 1.0 + (gran - 0.5) * granulation;
 
-  // 塗り残しの白：明部を紙白へ飛ばす（水彩の命）
+  // 塗り残しの白：明るい所だけ紙白へ（しきい値高め＝中間色は残す）
   float b = luma(col);
-  float wl = smoothstep(0.66, 0.92, b) * whiteLift;
+  float wl = smoothstep(0.78, 0.97, b) * whiteLift;
   col = mix(col, PAPER, wl);
 
-  // 周縁を紙白へ抜く（白い紙に描いた絵のように）
-  float r = length((uv - 0.5) * vec2(aspect, 1.0));
-  float vig = smoothstep(0.52, 1.02, r) * vignette;
-  col = mix(col, PAPER, vig);
-
-  // 紙のグレイン（控えめ・乗算）
+  // 紙のグレイン（ごく薄く・乗算）
   vec2 jp = boilOffset(3.0);
   float grain = fbm(uv * res * 0.55 + jp * 0.5);
-  col *= mix(1.0, 0.92 + 0.08 * grain, paperStrength);
+  col *= mix(1.0, 0.96 + 0.04 * grain, paperStrength);
 
   outputColor = vec4(clamp(col, 0.0, 1.0), inputColor.a);
 }
@@ -98,7 +91,6 @@ class WatercolorImpl extends Effect {
         ['whiteLift', new Uniform(NPR.whiteLift)],
         ['wobble', new Uniform(NPR.wobble)],
         ['boil', new Uniform(NPR.boil)],
-        ['vignette', new Uniform(NPR.vignette)],
         ['lift', new Uniform(NPR.lift)],
         ['uFrame', new Uniform(0)],
       ]),
