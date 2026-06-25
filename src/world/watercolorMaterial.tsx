@@ -6,8 +6,8 @@
 
 // 共有ユニフォーム（後でライブ調整しやすいよう外出し）
 export const watercolorUniforms = {
-  uGran: { value: 0.55 }, // 濃淡ムラの強さ
-  uHole: { value: 0.3 }, // 紙の白の抜け
+  uGran: { value: 0.9 }, // 濃淡ムラの強さ
+  uHole: { value: 0.4 }, // 紙の白の抜け
 };
 
 const noiseGLSL = /* glsl */ `
@@ -40,13 +40,15 @@ export function watercolorOnBeforeCompile(shader: any) {
       '#include <map_fragment>',
       `#include <map_fragment>
 {
-  float wg1 = wcFbm(vWcPos * 0.28);
-  float wg2 = wcFbm(vWcPos * 1.10 + 11.0);
-  float wgran = mix(wg1, wg2, 0.4);
+  float wg1 = wcFbm(vWcPos * 0.18);
+  float wg2 = wcFbm(vWcPos * 0.90 + 11.0);
+  float wgran = mix(wg1, wg2, 0.5);
   // 面の中の濃淡（顔料ムラ）
   diffuseColor.rgb *= 1.0 + (wgran - 0.5) * uGran;
-  // 紙の白が抜ける（低ノイズ域）
-  float hole = smoothstep(0.55, 0.30, wg1) * uHole;
+  // 寒暖のゆらぎ（水彩の色の揺れ）
+  diffuseColor.rgb += vec3(0.05, 0.0, -0.04) * (wg2 - 0.5) * uGran;
+  // 紙の白が抜ける（低ノイズ域＝塗り残し）
+  float hole = smoothstep(0.50, 0.26, wg1) * uHole;
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.99, 0.985, 0.965), hole);
 }`,
     );

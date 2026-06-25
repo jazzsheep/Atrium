@@ -26,14 +26,13 @@ export const WORLD = {
 // flipbook:パラパラ漫画化(低fps+boil)。今は後回しで false。
 export const NPR = {
   enabled: true,
-  flipbook: false,
+  flipbook: false, // パラパラ漫画(低fps)。後回し。
   fps: 12,
-  paper: 0.3,
-  granulation: 0.5,
-  whiteLift: 0.7,
-  wobble: 0.4,
-  boil: 0.0,
-  lift: 0.05,
+  paper: 0.3, // 紙グレイン
+  whiteLift: 0.5, // 明部を紙白へ
+  wobble: 0.4, // 手描き揺らぎ
+  edge: 0.7, // 濡れ縁(顔料だまり)の強さ
+  edgeScale: 2.0, // 縁を出す深度差のしきい(m)
 };
 
 export interface PlaceDef {
