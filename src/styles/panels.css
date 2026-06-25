@@ -1,0 +1,337 @@
+/* 中身パネル（Phase 3）。水彩トーンの上で読みやすさを最優先（受け入れ条件 B）。
+   theme.css の後に読み込み、仮枠だった .panel をレイアウト用に上書きする。 */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden; /* 中身は .panel-content がスクロール */
+  text-align: left;
+}
+
+/* --- ヘッダ --- */
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1.1rem, 3.5vw, 1.6rem) clamp(1.2rem, 4vw, 2rem) 0.9rem;
+  border-bottom: 1px solid var(--panel-line);
+}
+.panel-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+}
+.panel-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 5vw, 1.9rem);
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+.panel-close {
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.panel-close:hover {
+  background: var(--paper-warm);
+  color: var(--ink);
+}
+
+/* --- スクロール本体 --- */
+.panel-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: clamp(1.1rem, 4vw, 1.8rem) clamp(1.2rem, 4vw, 2rem);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* --- フッタ --- */
+.panel-foot {
+  padding: 0.9rem;
+  border-top: 1px solid var(--panel-line);
+  text-align: center;
+}
+
+/* --- 共通の中身要素 --- */
+.lead {
+  margin: 0 0 1.4rem;
+  font-size: clamp(0.96rem, 2.6vw, 1.05rem);
+  line-height: 1.85;
+  color: var(--ink);
+}
+.panel-section {
+  margin-bottom: 1.9rem;
+  scroll-margin-top: 0.5rem;
+  border-radius: 14px;
+  transition: background 0.5s ease;
+}
+.panel-section:last-child {
+  margin-bottom: 0.4rem;
+}
+.section-h {
+  margin: 0 0 0.8rem;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line);
+}
+.sub-h {
+  margin: 1.2rem 0 0.5rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+}
+/* 小項目で開いた時の一瞬のハイライト */
+.section-focus {
+  background: rgba(243, 233, 191, 0.35);
+}
+
+.timeline,
+.awards,
+.exhibitions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.timeline li,
+.awards li {
+  position: relative;
+  padding-left: 1.1rem;
+  margin-bottom: 0.55rem;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.timeline li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--grass-3);
+}
+.awards li::before {
+  content: '◇';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--sun-strong);
+}
+.statement {
+  margin: 0;
+  line-height: 1.95;
+  font-size: clamp(0.96rem, 2.6vw, 1.05rem);
+  color: var(--ink);
+}
+
+/* --- 作品 --- */
+.works {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+.work {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.work-figure {
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--sky-1), var(--paper));
+  border: 1px solid var(--panel-line);
+  border-radius: 14px;
+  padding: 0.8rem;
+}
+.work-art {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+}
+.work-title {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.work-year {
+  margin-left: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+}
+.work-desc {
+  margin: 0;
+  line-height: 1.8;
+  color: var(--ink);
+}
+@media (min-width: 560px) {
+  .work {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .work-figure {
+    flex: none;
+    width: 230px;
+  }
+}
+
+/* --- 展示 --- */
+.exhibition {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.exhibition:last-child {
+  border-bottom: none;
+}
+.ex-when {
+  flex: none;
+  width: 8.5rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+}
+.ex-what {
+  font-weight: 600;
+  color: var(--ink);
+}
+.ex-where {
+  margin-top: 0.2rem;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+
+/* --- サンプル明示バッジ --- */
+.sample-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: #8a6d2f;
+  background: rgba(243, 228, 168, 0.6);
+  border: 1px solid rgba(190, 160, 90, 0.5);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* --- 関わる: 窓口・フォーム・リンク --- */
+.channel p {
+  margin: 0;
+  line-height: 1.75;
+  color: var(--ink);
+}
+.contact-form {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.field span {
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.panel input,
+.panel textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  width: 100%;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+.panel textarea {
+  resize: vertical;
+}
+.panel input:focus,
+.panel textarea:focus {
+  outline: none;
+  border-color: var(--sky-3);
+  box-shadow: 0 0 0 3px rgba(156, 202, 233, 0.25);
+}
+.form-notice {
+  margin: 0.2rem 0 0;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.82rem;
+  color: #8a5a2f;
+  background: rgba(246, 224, 196, 0.5);
+  border: 1px solid rgba(200, 150, 100, 0.4);
+  border-radius: 10px;
+}
+.btn-submit {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--sun);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.55rem 1.4rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+.form-done {
+  margin: 0.2rem 0 0;
+  font-size: 0.86rem;
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  margin: 0.4rem 0 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+.dummy-link {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--sky-3);
+  padding-bottom: 1px;
+  cursor: pointer;
+}
+.dummy-link:hover {
+  color: var(--ink-soft);
+}
+
+.muted {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}

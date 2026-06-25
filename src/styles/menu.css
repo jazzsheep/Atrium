@@ -1,0 +1,284 @@
+/* 文字メニュー（Phase 4）。実用の経路。
+   モバイル先行: 上部バー＋ドロワー。768px 以上で左サイド常駐に切替。 */
+
+:root {
+  --nav-w: 240px;
+  --topbar-h: 54px;
+  --nav-bg: rgba(252, 251, 246, 0.86);
+}
+
+/* --- ブランド（ロゴ／アーティスト名） --- */
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.brand-logo {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  letter-spacing: 0.22em;
+  color: var(--ink);
+}
+.brand-artist {
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+}
+.brand-role {
+  margin-left: 0.4rem;
+  opacity: 0.8;
+}
+.brand-large .brand-logo {
+  font-size: 1.5rem;
+}
+
+/* --- スマホ上部バー --- */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 max(0.7rem, env(safe-area-inset-left)) 0 max(0.7rem, env(safe-area-inset-right));
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--panel-line);
+  backdrop-filter: blur(8px);
+}
+.topbar .brand {
+  flex: 1 1 auto;
+}
+.topbar .brand-logo {
+  font-size: 1rem;
+}
+
+.hamburger {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.hamburger span {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ink);
+  opacity: 0.8;
+}
+
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font: inherit;
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.home-btn:hover {
+  background: var(--paper-warm);
+}
+.home-ico {
+  font-size: 1rem;
+  line-height: 1;
+}
+.home-btn--icon {
+  flex: none;
+  padding: 0.4rem 0.6rem;
+  font-size: 1.1rem;
+}
+
+/* --- ドロワー背景（スマホ） --- */
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: rgba(40, 50, 45, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.menu-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- サイドナビ --- */
+.sidenav {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(82vw, 300px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.2rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom));
+  background: var(--nav-bg);
+  border-right: 1px solid var(--panel-line);
+  backdrop-filter: blur(10px);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.sidenav.open {
+  transform: none;
+}
+
+.menu-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+}
+.group {
+  border-radius: 14px;
+  padding: 0.2rem 0.2rem 0.4rem;
+  transition: background 0.2s ease;
+}
+.group.current {
+  background: rgba(169, 207, 151, 0.22);
+}
+.group-head {
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.group-head:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.group.current .group-head {
+  font-weight: 700;
+}
+.group.current .group-head::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  background: var(--grass-3);
+  vertical-align: middle;
+}
+.sub {
+  list-style: none;
+  margin: 0.1rem 0 0;
+  padding: 0 0 0 0.8rem;
+  display: flex;
+  flex-direction: column;
+}
+.sub-item {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.sub-item:hover {
+  color: var(--ink);
+  border-left-color: var(--grass-3);
+}
+
+/* --- V2 対話アバターの居場所（控えめなプレースホルダー） --- */
+.agent-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding: 0.7rem 0.8rem;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.35);
+  opacity: 0.7;
+}
+.agent-slot-orb {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #bfddf2 55%, #9ccae9);
+  filter: blur(0.3px);
+}
+.agent-slot-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.agent-slot-text strong {
+  font-size: 0.82rem;
+  color: var(--ink);
+  letter-spacing: 0.06em;
+}
+.agent-slot-text span {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+
+/* === PC: 左サイド常駐 === */
+@media (min-width: 768px) {
+  .topbar,
+  .menu-backdrop,
+  .hamburger {
+    display: none;
+  }
+  .sidenav {
+    width: var(--nav-w);
+    transform: none;
+    box-shadow: 6px 0 30px rgba(60, 72, 60, 0.06);
+  }
+  /* パネルがサイドバーに重ならないよう中央寄せ領域を右へ */
+  .panel-scrim {
+    padding-left: calc(var(--nav-w) + 1.2rem);
+  }
+  /* 案内キャプションも可視領域の中央へ */
+  .hud-caption {
+    left: var(--nav-w);
+  }
+  /* デモ明示はサイドバーと干渉しないよう右下へ */
+  .atrium-notice {
+    left: auto;
+    right: max(0.9rem, env(safe-area-inset-right));
+  }
+}
+
+/* === スマホ: 上部バー分のオフセット === */
+@media (max-width: 767.98px) {
+  .panel-scrim {
+    padding-top: calc(var(--topbar-h) + 0.8rem);
+  }
+  /* デモ明示が下部に被らないよう少し上げる余地（必要時） */
+}

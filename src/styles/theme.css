@@ -1,0 +1,293 @@
+/* Atrium 世界観トーン: 水彩・草原・青空・日光。薄くまばら、白い余白を残す。
+   虹彩（ホログラム）は風船にだけ宿す（このベースには広げない）。 */
+
+:root {
+  --paper: #fcfbf6;
+  --paper-warm: #f6f3e9;
+  --grass-1: #d4e4bd;
+  --grass-2: #a9cf97;
+  --grass-3: #8bbd83;
+  --sky-1: #e3f1fb;
+  --sky-2: #bfddf2;
+  --sky-3: #9ccae9;
+  --sun: #f6eecb;
+  --sun-strong: #f3e4a8;
+  --ink: #36443b;
+  --ink-soft: #5d6b60;
+  --line: rgba(54, 68, 59, 0.16);
+  --panel-bg: rgba(252, 251, 246, 0.92);
+  --panel-line: rgba(54, 68, 59, 0.14);
+  --shadow-soft: 0 10px 34px rgba(60, 72, 60, 0.14);
+  --font-sans: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP',
+    'Yu Gothic', 'YuGothic', system-ui, sans-serif;
+  --font-serif: 'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif JP',
+    serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.atrium-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* --- 空〜草原の水彩ウォッシュ（3D世界の背後の遠景） --- */
+.atrium-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(130% 70% at 50% -8%, var(--sky-1) 0%, transparent 58%),
+    radial-gradient(80% 50% at 78% 14%, var(--sun) 0%, transparent 55%),
+    radial-gradient(150% 70% at 50% 120%, var(--grass-2) 0%, transparent 56%),
+    linear-gradient(180deg, var(--sky-3) 0%, var(--sky-1) 30%, var(--paper) 58%,
+      var(--grass-1) 100%);
+}
+
+/* --- 3D世界レイヤー --- */
+.world-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.world-layer canvas {
+  touch-action: none;
+}
+
+/* --- 風のアバター（中央固定・タップは透過させる） --- */
+.avatar {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.avatar-glow {
+  position: absolute;
+  width: clamp(180px, 40vmin, 320px);
+  height: clamp(180px, 40vmin, 320px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(226, 241, 251, 0.55) 0%,
+    rgba(191, 221, 242, 0.25) 40%,
+    transparent 70%
+  );
+  filter: blur(4px);
+  animation: avatar-breathe 5.5s ease-in-out infinite;
+}
+.avatar-svg {
+  position: relative;
+  width: clamp(130px, 30vmin, 230px);
+  height: clamp(130px, 30vmin, 230px);
+  overflow: visible;
+  filter: drop-shadow(0 2px 6px rgba(140, 190, 225, 0.25));
+}
+.wind-ring {
+  fill: none;
+  stroke-linecap: round;
+  transform-origin: 100px 100px;
+}
+.ring1 {
+  stroke: rgba(140, 198, 234, 0.7);
+  stroke-width: 5;
+  stroke-dasharray: 150 130;
+  animation: wind-spin 9s linear infinite;
+}
+.ring2 {
+  stroke: rgba(176, 216, 240, 0.8);
+  stroke-width: 6;
+  stroke-dasharray: 120 90;
+  animation: wind-spin 6s linear infinite reverse;
+}
+.ring3 {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 5;
+  stroke-dasharray: 80 70;
+  animation: wind-spin 4.2s linear infinite;
+}
+.wind-core {
+  fill: rgba(255, 255, 255, 0.7);
+}
+@keyframes wind-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes avatar-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+/* --- 中央下の案内キャプション --- */
+.hud-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(4.5rem, 16vh, 8rem);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  pointer-events: none;
+  text-align: center;
+}
+.hud-place {
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 4.5vw, 1.7rem);
+  letter-spacing: 0.16em;
+  color: var(--ink);
+}
+.hud-hint {
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+}
+
+/* --- オープニング --- */
+.opening {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--sky-1) 0%, var(--paper) 60%, var(--grass-1) 100%);
+}
+.opening-wash {
+  position: absolute;
+  width: 120vmax;
+  height: 120vmax;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 250, 224, 0.9) 0%,
+    rgba(226, 241, 251, 0.5) 35%,
+    transparent 65%
+  );
+}
+.opening-title {
+  position: relative;
+  text-align: center;
+}
+.opening-name {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  letter-spacing: 0.16em;
+  color: var(--ink);
+}
+.opening-sub {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+}
+
+/* --- 中身パネル（Phase 1 は仮枠） --- */
+.panel-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(247, 250, 245, 0.4);
+  backdrop-filter: blur(2px);
+}
+.panel {
+  width: min(680px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  padding: clamp(1.4rem, 4vw, 2.2rem);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+.panel-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  letter-spacing: 0.12em;
+}
+.panel-note {
+  color: var(--ink-soft);
+  margin-bottom: 1.4rem;
+}
+.btn-back {
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-back:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+/* --- 「公開情報に基づく提案デモ」明示 --- */
+.atrium-notice {
+  position: fixed;
+  left: max(0.9rem, env(safe-area-inset-left));
+  bottom: max(0.9rem, env(safe-area-inset-bottom));
+  z-index: 50;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-glow,
+  .wind-ring {
+    animation: none;
+  }
+}
