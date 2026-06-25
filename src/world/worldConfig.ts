@@ -21,40 +21,27 @@ export const WORLD = {
   avatar: { lift: 1.0, size: 0.65 }, // 人間より一回り小さい（直径約1.3m）
 };
 
-// 水彩NPR（スクリーン後処理・軽め）。enabled=false で即オフ。
-// ※本命はオブジェクト側の水彩マテリアル（面に乗る絵具）。ここは仕上げの薄い処理。
-// flipbook:パラパラ漫画化(低fps+boil)。今は後回しで false。
-export const NPR = {
-  enabled: true,
-  flipbook: false, // パラパラ漫画(低fps)。後回し。
-  fps: 12,
-  paper: 0.3, // 紙グレイン
-  whiteLift: 0.5, // 明部を紙白へ
-  wobble: 0.4, // 手描き揺らぎ
-  edge: 0.7, // 濡れ縁(顔料だまり)の強さ
-  edgeScale: 2.0, // 縁を出す深度差のしきい(m)
-};
+// 水彩NPR の ON/OFF。false で素のローポリに戻る。
+// 実体は2層: 面の絵具 = watercolorMaterial（watercolorUniforms）／仕上げ = WatercolorEffect（nprState）。
+export const NPR = { enabled: true };
 
 export interface PlaceDef {
   id: PlaceId;
   label: string;
-  caption: string;
   motif: Motif;
-  color: string;
-  a: number; // 町の中での位置（前後）
-  b: number; // 町の中での位置（左右）
+  a: number; // 町の中での位置（前後 rad）
+  b: number; // 町の中での位置（左右 rad）
   float: number; // 地表からの浮き(m)
   scale: number; // モチーフの実寸スケール
 }
 
 export const PLACES: PlaceDef[] = [
-  { id: 'know', label: '知る', caption: '経歴と理念', motif: 'house', color: '#a9c79a', a: 0.18, b: -0.34, float: 0, scale: 11 },
-  { id: 'visit', label: '見に行く', caption: '作品と展示', motif: 'balloon', color: '#d6c9ec', a: 0.34, b: 0.02, float: 8, scale: 9 },
-  { id: 'relate', label: '関わる', caption: '問い合わせ', motif: 'vortex', color: '#cfe6c0', a: 0.18, b: 0.34, float: 0, scale: 10 },
+  { id: 'know', label: '知る', motif: 'house', a: 0.18, b: -0.34, float: 0, scale: 11 },
+  { id: 'visit', label: '見に行く', motif: 'balloon', a: 0.34, b: 0.02, float: 8, scale: 9 },
+  { id: 'relate', label: '関わる', motif: 'vortex', a: 0.18, b: 0.34, float: 0, scale: 10 },
 ];
 
 export const PLACE_BY_ID = Object.fromEntries(PLACES.map((p) => [p.id, p])) as Record<PlaceId, PlaceDef>;
-export const PLACE_IDS = PLACES.map((p) => p.id);
 
 export const NORTH = new Vector3(0, 1, 0); // 町の中心（球の真上）
 const UP = NORTH;
