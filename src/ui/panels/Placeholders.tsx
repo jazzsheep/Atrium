@@ -1,7 +1,7 @@
 // 作品画像の抽象プレースホルダー（実画像は使わない。brief §6 / spec 4.4）。
 // 風船＝作品なので、ここは虹彩を宿してよい数少ない場所。
 
-// INTER-WORLD/SPHERE: ホログラム風船。淡い虹彩のグラデを宿す。
+// バルーン状の作品（風船）。淡い虹彩のグラデを宿す。
 export function BalloonArt() {
   return (
     <svg className="work-art" viewBox="0 0 220 170" role="img" aria-label="風船作品の抽象イメージ">
@@ -21,7 +21,7 @@ export function BalloonArt() {
   );
 }
 
-// Cocooner: 繭＝柔らかな光の卵。虹彩は宿さず、淡い日光の色で。
+// 繭・光の作品。虹彩は宿さず、淡い日光の色で。
 export function LightArt() {
   return (
     <svg className="work-art" viewBox="0 0 220 170" role="img" aria-label="繭・光の抽象イメージ">
